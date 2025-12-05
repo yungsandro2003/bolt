@@ -41,38 +41,51 @@ router.get('/', authenticateToken, (req, res) => {
 router.get('/today', authenticateToken, (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
-  db.all(
-    'SELECT * FROM time_records WHERE user_id = ? AND date = ? ORDER BY created_at ASC',
-    [req.user.id, today],
-    (err, rows) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erro ao buscar registros de hoje' });
-      }
+  console.log('\n🟢 [GET /today] BUSCA DE REGISTROS');
+  console.log('👤 User ID:', req.user.id);
+  console.log('📅 Data (today):', today);
 
-      const record = {
-        id: null,
-        user_id: req.user.id,
-        date: today,
-        entry: null,
-        break_start: null,
-        break_end: null,
-        exit: null,
-        created_at: null,
-        updated_at: null
-      };
+  const query = 'SELECT * FROM time_records WHERE user_id = ? AND date = ? ORDER BY created_at ASC';
+  const params = [req.user.id, today];
 
-      rows.forEach(row => {
-        if (row.type === 'entry') record.entry = row.time;
-        if (row.type === 'break_start') record.break_start = row.time;
-        if (row.type === 'break_end') record.break_end = row.time;
-        if (row.type === 'exit') record.exit = row.time;
-        if (!record.id) record.id = row.id;
-        if (!record.created_at) record.created_at = row.created_at;
-      });
+  console.log('📝 SQL Query:', query);
+  console.log('📝 Parâmetros:', params);
 
-      res.json(record);
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('❌ ERRO ao buscar registros:', err);
+      return res.status(500).json({ error: 'Erro ao buscar registros de hoje', details: err.message });
     }
-  );
+
+    console.log('📦 Registros encontrados no banco:', rows.length);
+    console.log('📋 Dados brutos do banco:', JSON.stringify(rows, null, 2));
+
+    const record = {
+      id: null,
+      user_id: req.user.id,
+      date: today,
+      entry: null,
+      break_start: null,
+      break_end: null,
+      exit: null,
+      created_at: null,
+      updated_at: null
+    };
+
+    rows.forEach(row => {
+      console.log('🔄 Processando row:', row.type, '→', row.time);
+      if (row.type === 'entry') record.entry = row.time;
+      if (row.type === 'break_start') record.break_start = row.time;
+      if (row.type === 'break_end') record.break_end = row.time;
+      if (row.type === 'exit') record.exit = row.time;
+      if (!record.id) record.id = row.id;
+      if (!record.created_at) record.created_at = row.created_at;
+    });
+
+    console.log('📤 Resposta final sendo enviada:', JSON.stringify(record, null, 2));
+
+    res.json(record);
+  });
 });
 
 router.post('/', authenticateToken, (req, res) => {
@@ -81,27 +94,100 @@ router.post('/', authenticateToken, (req, res) => {
   const date = new Date().toISOString().split('T')[0];
   const time = new Date().toISOString().split('T')[1].substring(0, 8);
 
+  console.log('\n🔵 [POST /time-records] INÍCIO DO REGISTRO');
+  console.log('📥 Dados recebidos:', { type, user_id, date, time });
+
   if (!type || !['entry', 'break_start', 'break_end', 'exit'].includes(type)) {
+    console.log('❌ Tipo inválido:', type);
     return res.status(400).json({ error: 'Tipo inválido' });
   }
 
-  db.run(
-    'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)',
-    [user_id, date, time, type],
-    function(err) {
+  const query = 'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)';
+  const params = [user_id, date, time, type];
+
+  console.log('📝 SQL Query:', query);
+  console.log('📝 Parâmetros:', params);
+
+  db.run(query, params, function(err) {
+    if (err) {
+      console.error('❌ ERRO ao inserir no banco:', err);
+      return res.status(500).json({ error: 'Erro ao registrar ponto', details: err.message });
+    }
+
+    const insertedId = this.lastID;
+    console.log('✅ Registro INSERIDO com sucesso! ID:', insertedId);
+
+    db.get('SELECT * FROM time_records WHERE id = ?', [insertedId], (err, row) => {
       if (err) {
-        return res.status(500).json({ error: 'Erro ao registrar ponto' });
+        console.error('⚠️ Erro ao verificar inserção:', err);
+      } else {
+        console.log('🔍 Verificação - Registro inserido:', row);
       }
 
+      db.all('SELECT COUNT(*) as total FROM time_records WHERE user_id = ? AND date = ?',
+        [user_id, date],
+        (err, result) => {
+          if (!err) {
+            console.log('📊 Total de registros hoje para user', user_id, ':', result[0].total);
+          }
+        }
+      );
+
       res.status(201).json({
-        id: this.lastID,
+        id: insertedId,
         user_id,
         date,
         time,
         type
       });
+    });
+  });
+});
+
+router.get('/debug', authenticateToken, (req, res) => {
+  console.log('\n🔍 [GET /debug] INSPEÇÃO DO BANCO');
+
+  db.all("SELECT name FROM sqlite_master WHERE type='table'", [], (err, tables) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erro ao listar tabelas', details: err.message });
     }
-  );
+
+    console.log('📊 Tabelas existentes:', tables);
+
+    db.all("PRAGMA table_info(time_records)", [], (err, schema) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar schema', details: err.message });
+      }
+
+      console.log('📐 Schema da tabela time_records:', schema);
+
+      db.all('SELECT * FROM time_records LIMIT 50', [], (err, allRecords) => {
+        if (err) {
+          return res.status(500).json({ error: 'Erro ao buscar registros', details: err.message });
+        }
+
+        console.log('📦 Total de registros na tabela:', allRecords.length);
+        console.log('📋 Primeiros registros:', allRecords.slice(0, 5));
+
+        const today = new Date().toISOString().split('T')[0];
+        db.all('SELECT * FROM time_records WHERE date = ?', [today], (err, todayRecords) => {
+          if (err) {
+            return res.status(500).json({ error: 'Erro ao buscar hoje', details: err.message });
+          }
+
+          res.json({
+            tables: tables.map(t => t.name),
+            schema: schema,
+            total_records: allRecords.length,
+            sample_records: allRecords.slice(0, 10),
+            today_date: today,
+            today_records: todayRecords,
+            current_user: req.user.id
+          });
+        });
+      });
+    });
+  });
 });
 
 router.get('/report', authenticateToken, (req, res) => {

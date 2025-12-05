@@ -74,59 +74,95 @@ router.put('/:id/approve', authenticateToken, isAdmin, (req, res) => {
   const requestId = req.params.id;
   const adminId = req.user.id;
 
+  console.log('\n🟡 [PUT /approve] APROVAÇÃO DE AJUSTE');
+  console.log('📝 Request ID:', requestId);
+  console.log('👤 Admin ID:', adminId);
+
   db.get('SELECT * FROM adjustment_requests WHERE id = ?', [requestId], (err, request) => {
     if (err) {
+      console.error('❌ Erro ao buscar solicitação:', err);
       return res.status(500).json({ error: 'Erro ao buscar solicitação' });
     }
     if (!request) {
+      console.log('❌ Solicitação não encontrada');
       return res.status(404).json({ error: 'Solicitação não encontrada' });
     }
     if (request.status !== 'pending') {
+      console.log('⚠️ Solicitação já processada. Status:', request.status);
       return res.status(400).json({ error: 'Solicitação já foi processada' });
     }
+
+    console.log('📋 Dados da solicitação:', request);
+    console.log('🔍 Verificando se registro já existe...');
 
     db.get(
       'SELECT * FROM time_records WHERE user_id = ? AND date = ? AND type = ?',
       [request.user_id, request.date, request.type],
       (err, existingRecord) => {
         if (err) {
+          console.error('❌ Erro ao verificar registro existente:', err);
           return res.status(500).json({ error: 'Erro ao verificar registro existente' });
+        }
+
+        console.log('📊 Registro existente?', existingRecord ? 'SIM' : 'NÃO');
+        if (existingRecord) {
+          console.log('📋 Dados do registro existente:', existingRecord);
         }
 
         const applyAdjustment = () => {
           if (existingRecord) {
+            console.log('🔄 ATUALIZANDO registro existente...');
             db.run(
               'UPDATE time_records SET time = ? WHERE id = ?',
               [request.new_time, existingRecord.id],
-              (err) => {
+              function(err) {
                 if (err) {
-                  return res.status(500).json({ error: 'Erro ao atualizar registro' });
+                  console.error('❌ Erro ao atualizar registro:', err);
+                  return res.status(500).json({ error: 'Erro ao atualizar registro', details: err.message });
                 }
-                updateRequestStatus();
+                console.log('✅ Registro ATUALIZADO. Changes:', this.changes);
+
+                db.get('SELECT * FROM time_records WHERE id = ?', [existingRecord.id], (err, updated) => {
+                  console.log('🔍 Verificação após UPDATE:', updated);
+                  updateRequestStatus();
+                });
               }
             );
           } else {
-            db.run(
-              'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)',
-              [request.user_id, request.date, request.new_time, request.type],
-              (err) => {
-                if (err) {
-                  return res.status(500).json({ error: 'Erro ao criar registro' });
-                }
-                updateRequestStatus();
+            console.log('➕ INSERINDO novo registro...');
+            const insertQuery = 'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)';
+            const insertParams = [request.user_id, request.date, request.new_time, request.type];
+
+            console.log('📝 SQL:', insertQuery);
+            console.log('📝 Params:', insertParams);
+
+            db.run(insertQuery, insertParams, function(err) {
+              if (err) {
+                console.error('❌ Erro ao criar registro:', err);
+                return res.status(500).json({ error: 'Erro ao criar registro', details: err.message });
               }
-            );
+              console.log('✅ Registro CRIADO. ID:', this.lastID);
+
+              db.get('SELECT * FROM time_records WHERE id = ?', [this.lastID], (err, inserted) => {
+                console.log('🔍 Verificação após INSERT:', inserted);
+                updateRequestStatus();
+              });
+            });
           }
         };
 
         const updateRequestStatus = () => {
+          console.log('📝 Atualizando status da solicitação para "approved"...');
           db.run(
             'UPDATE adjustment_requests SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?',
             ['approved', adminId, requestId],
-            (err) => {
+            function(err) {
               if (err) {
+                console.error('❌ Erro ao atualizar status:', err);
                 return res.status(500).json({ error: 'Erro ao atualizar status da solicitação' });
               }
+              console.log('✅ Status atualizado. Changes:', this.changes);
+              console.log('🎉 APROVAÇÃO CONCLUÍDA COM SUCESSO!\n');
               res.json({ message: 'Solicitação aprovada com sucesso' });
             }
           );
