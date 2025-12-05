@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { FileText, Calendar } from 'lucide-react';
 import { api } from '../services/api';
+import {
+  calculateWorkedMinutes,
+  calculateBalance,
+  formatMinutesToHours,
+  formatTime,
+  formatDate,
+  safeParseInt
+} from '../utils/timeCalculations';
 
 type ReportRecord = {
   date: string;
@@ -41,7 +49,7 @@ export function Reports() {
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - period);
 
-      const formatDate = (date: Date) => {
+      const formatDateString = (date: Date) => {
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
@@ -49,8 +57,8 @@ export function Reports() {
       };
 
       const report = await api.timeRecords.getReport({
-        start_date: formatDate(startDate),
-        end_date: formatDate(endDate),
+        start_date: formatDateString(startDate),
+        end_date: formatDateString(endDate),
       });
 
       setReportData(report);
@@ -61,58 +69,13 @@ export function Reports() {
     }
   };
 
-  const calculateWorkedMinutes = (
-    entry: string | null,
-    breakStart: string | null,
-    breakEnd: string | null,
-    exit: string | null
-  ): number => {
-    if (!entry || !exit) {
-      return NaN;
-    }
-
-    const parseTime = (time: string): number => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-
-    const entryMinutes = parseTime(entry);
-    const exitMinutes = parseTime(exit);
-
-    let totalMinutes = exitMinutes - entryMinutes;
-
-    if (breakStart && breakEnd) {
-      const breakStartMinutes = parseTime(breakStart);
-      const breakEndMinutes = parseTime(breakEnd);
-      const breakDuration = breakEndMinutes - breakStartMinutes;
-      totalMinutes -= breakDuration;
-    }
-
-    return totalMinutes;
+  const getShiftMinutes = (): number => {
+    return safeParseInt(userData?.shift?.total_minutes, 480);
   };
 
-  const formatMinutes = (minutes: number): string => {
-    if (isNaN(minutes)) {
-      return '--';
-    }
-
-    const hours = Math.floor(Math.abs(minutes) / 60);
-    const mins = Math.abs(minutes) % 60;
-    return `${hours}h ${mins.toString().padStart(2, '0')}m`;
-  };
-
-  const formatTime = (time: string | null): string => {
-    if (!time) return '--';
-    return time.substring(0, 5);
-  };
-
-  const formatDate = (dateString: string): string => {
+  const formatDateDisplay = (dateString: string): string => {
     const [year, month, day] = dateString.split('-');
     return `${day}/${month}/${year}`;
-  };
-
-  const getShiftMinutes = (): number => {
-    return userData?.shift?.total_minutes || 480;
   };
 
   return (
@@ -215,15 +178,14 @@ export function Reports() {
                 ) : (
                   reportData.map((record, index) => {
                     const workedMinutes = calculateWorkedMinutes(
-                      record.entry,
-                      record.break_start,
-                      record.break_end,
-                      record.exit
+                      record?.entry,
+                      record?.break_start,
+                      record?.break_end,
+                      record?.exit
                     );
 
-                    const workedHours = isNaN(workedMinutes) ? 0 : workedMinutes;
                     const shiftMinutes = getShiftMinutes();
-                    const balance = isNaN(workedMinutes) ? 0 : workedMinutes - shiftMinutes;
+                    const balanceResult = calculateBalance(workedMinutes, shiftMinutes);
 
                     return (
                       <tr
@@ -237,61 +199,61 @@ export function Reports() {
                           style={{ color: '#E0E0E0' }}
                           className="px-4 py-3 text-sm"
                         >
-                          {formatDate(record.date)}
+                          {formatDateDisplay(record?.date || '')}
                         </td>
                         <td
                           style={{
-                            color: record.entry ? '#10b981' : '#6B7280',
+                            color: record?.entry ? '#10b981' : '#6B7280',
                             fontFamily: 'monospace',
                           }}
                           className="px-4 py-3 text-sm text-center font-semibold"
                         >
-                          {formatTime(record.entry)}
+                          {formatTime(record?.entry)}
                         </td>
                         <td
                           style={{
-                            color: record.break_start ? '#eab308' : '#6B7280',
+                            color: record?.break_start ? '#eab308' : '#6B7280',
                             fontFamily: 'monospace',
                           }}
                           className="px-4 py-3 text-sm text-center font-semibold"
                         >
-                          {formatTime(record.break_start)}
+                          {formatTime(record?.break_start)}
                         </td>
                         <td
                           style={{
-                            color: record.break_end ? '#f97316' : '#6B7280',
+                            color: record?.break_end ? '#f97316' : '#6B7280',
                             fontFamily: 'monospace',
                           }}
                           className="px-4 py-3 text-sm text-center font-semibold"
                         >
-                          {formatTime(record.break_end)}
+                          {formatTime(record?.break_end)}
                         </td>
                         <td
                           style={{
-                            color: record.exit ? '#ef4444' : '#6B7280',
+                            color: record?.exit ? '#ef4444' : '#6B7280',
                             fontFamily: 'monospace',
                           }}
                           className="px-4 py-3 text-sm text-center font-semibold"
                         >
-                          {formatTime(record.exit)}
+                          {formatTime(record?.exit)}
                         </td>
                         <td
                           style={{
-                            color: isNaN(workedMinutes) ? '#6B7280' : '#E0E0E0',
+                            color: workedMinutes > 0 ? '#E0E0E0' : '#6B7280',
                             fontFamily: 'monospace',
                           }}
                           className="px-4 py-3 text-sm text-center font-semibold"
                         >
-                          {formatMinutes(workedHours)}
+                          {formatMinutesToHours(workedMinutes)}
                         </td>
                         <td
                           style={{
-                            color: balance === 0 ? '#6B7280' : balance > 0 ? '#10b981' : '#ef4444',
+                            color: balanceResult.minutes === 0 ? '#6B7280' : balanceResult.isNegative ? '#ef4444' : '#10b981',
                             fontFamily: 'monospace',
                           }}
                           className="px-4 py-3 text-sm text-center font-bold"
                         >
-                          {balance === 0 ? '--' : `${balance > 0 ? '+' : ''}${formatMinutes(balance)}`}
+                          {balanceResult.minutes === 0 ? '--' : `${balanceResult.isNegative ? '' : '+'}${balanceResult.balance}`}
                         </td>
                       </tr>
                     );
@@ -308,7 +270,7 @@ export function Reports() {
           style={{ backgroundColor: '#0A1A2F', color: '#E0E0E0' }}
           className="mt-4 p-4 rounded-lg text-sm"
         >
-          <strong>Turno:</strong> {userData.shift.name} - Jornada esperada: {formatMinutes(userData.shift.total_minutes)}
+          <strong>Turno:</strong> {userData.shift.name} - Jornada esperada: {formatMinutesToHours(userData.shift.total_minutes)}
         </div>
       )}
     </div>

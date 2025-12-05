@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Trash2, Users } from 'lucide-react';
+import { UserPlus, Trash2, Users, Edit, X } from 'lucide-react';
 import { api } from '../services/api';
 
 interface User {
@@ -33,6 +33,14 @@ export function EmployeeManagement() {
   const [shiftId, setShiftId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Estados para edição
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editShiftId, setEditShiftId] = useState<number | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     loadEmployees();
@@ -141,6 +149,62 @@ export function EmployeeManagement() {
       .replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   }
 
+  function handleEditClick(employee: Employee) {
+    setEditingEmployee(employee);
+    setEditName(employee.name);
+    setEditEmail(employee.email);
+    setEditShiftId(employee.shift?.id || null);
+    setIsEditModalOpen(true);
+  }
+
+  function handleCloseEditModal() {
+    setIsEditModalOpen(false);
+    setEditingEmployee(null);
+    setEditName('');
+    setEditEmail('');
+    setEditShiftId(null);
+    setMessage(null);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!editName || !editEmail || !editShiftId) {
+      setMessage({ type: 'error', text: 'Preencha todos os campos' });
+      return;
+    }
+
+    if (!editingEmployee) return;
+
+    setEditLoading(true);
+    setMessage(null);
+
+    try {
+      await api.users.update(editingEmployee.id, {
+        name: editName,
+        email: editEmail,
+        shift_id: editShiftId
+      });
+
+      setEditLoading(false);
+      setMessage({ type: 'success', text: 'Funcionário atualizado com sucesso!' });
+      loadEmployees();
+
+      setTimeout(() => {
+        handleCloseEditModal();
+      }, 1500);
+    } catch (err: any) {
+      setEditLoading(false);
+      const errorMessage = err.message || 'Erro ao atualizar funcionário';
+      if (errorMessage.includes('email')) {
+        setMessage({ type: 'error', text: 'Email já cadastrado' });
+      } else {
+        setMessage({ type: 'error', text: errorMessage });
+      }
+      console.error('Erro:', err);
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -218,8 +282,8 @@ export function EmployeeManagement() {
                 Turno de Trabalho
               </label>
               <select
-                value={shiftId}
-                onChange={(e) => setShiftId(e.target.value)}
+                value={shiftId || ''}
+                onChange={(e) => setShiftId(Number(e.target.value))}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
                 style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
               >
@@ -291,20 +355,144 @@ export function EmployeeManagement() {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(employee.id)}
-                    className="p-2 text-red-400 rounded-lg transition-colors"
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EF444433'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEditClick(employee)}
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: '#0A6777' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0d948833'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(employee.id)}
+                      className="p-2 text-red-400 rounded-lg transition-colors"
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EF444433'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal de Edição */}
+      {isEditModalOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={handleCloseEditModal}
+        >
+          <div
+            className="rounded-lg shadow-xl p-6 max-w-md w-full"
+            style={{ backgroundColor: '#253A4A' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold" style={{ color: '#E0E0E0' }}>
+                Editar Funcionário
+              </h3>
+              <button
+                onClick={handleCloseEditModal}
+                className="p-1 rounded-lg transition-colors"
+                style={{ color: '#E0E0E0' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0A1A2F'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: '#0A1A2F', borderColor: '#0A6777', color: '#E0E0E0' }}
+                  placeholder="Digite o nome completo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: '#0A1A2F', borderColor: '#0A6777', color: '#E0E0E0' }}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
+                  Turno de Trabalho
+                </label>
+                <select
+                  value={editShiftId || ''}
+                  onChange={(e) => setEditShiftId(Number(e.target.value))}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: '#0A1A2F', borderColor: '#0A6777', color: '#E0E0E0' }}
+                >
+                  <option value="">Selecione um turno</option>
+                  {shifts.map((shift) => (
+                    <option key={shift.id} value={shift.id}>
+                      {shift.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {message && (
+                <div
+                  className={`p-3 rounded-lg text-sm ${
+                    message.type === 'success'
+                      ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                      : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                  }`}
+                >
+                  {message.text}
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  className="flex-1 text-white font-medium py-3 rounded-lg transition-colors"
+                  style={{ backgroundColor: '#6B7280' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4B5563'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6B7280'}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: '#0A6777' }}
+                  onMouseEnter={(e) => !editLoading && (e.currentTarget.style.backgroundColor = '#0d9488')}
+                  onMouseLeave={(e) => !editLoading && (e.currentTarget.style.backgroundColor = '#0A6777')}
+                >
+                  {editLoading ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

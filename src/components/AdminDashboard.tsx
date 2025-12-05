@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Clock, AlertCircle, CheckCircle, XCircle, UserCheck } from 'lucide-react';
 import { api } from '../services/api';
+import { formatTime as formatTimeUtil } from '../utils/timeCalculations';
 
 interface Stats {
   totalEmployees: number;
@@ -151,12 +152,20 @@ export function AdminDashboard() {
     return fieldNames[type] || type;
   };
 
-  const formatTime = (timestamp: string | null): string => {
+  const formatTimeDisplay = (timestamp: string | null | undefined): string => {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'N/A';
+      }
+      return date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'N/A';
+    }
   };
 
   if (loading) {
@@ -262,11 +271,11 @@ export function AdminDashboard() {
                       </p>
                       {request.old_time && (
                         <p className="text-sm mb-1" style={{ color: '#E0E0E0', opacity: 0.8 }}>
-                          Valor Atual: <span className="font-medium">{formatTime(request.old_time)}</span>
+                          Valor Atual: <span className="font-medium">{formatTimeDisplay(request?.old_time)}</span>
                         </p>
                       )}
                       <p className="text-sm mb-1" style={{ color: '#E0E0E0', opacity: 0.8 }}>
-                        Novo Valor: <span className="font-medium">{formatTime(request.new_time)}</span>
+                        Novo Valor: <span className="font-medium">{formatTimeDisplay(request?.new_time)}</span>
                       </p>
                       {request.reason && (
                         <p className="text-sm italic mt-2" style={{ color: '#E0E0E0', opacity: 0.7 }}>

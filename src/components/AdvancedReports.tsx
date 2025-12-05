@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FileText, Calendar, Calculator } from 'lucide-react';
 import { api } from '../services/api';
+import {
+  calculateWorkedMinutes as calculateWorkedMinutesUtil,
+  formatMinutesToHours,
+  formatTime as formatTimeUtil,
+  safeParseInt
+} from '../utils/timeCalculations';
 
 type User = {
   id: number;
@@ -31,7 +37,7 @@ type TimeRecord = {
   exit_time: string | null;
 };
 
-type PeriodType = 'day' | 'week' | 'month' | 'custom';
+type PeriodType = 'today' | 'week' | 'month' | 'year' | 'custom';
 
 interface ReportRow {
   date: string;
@@ -43,42 +49,63 @@ interface ReportRow {
 }
 
 function calculateWorkedMinutes(record: TimeRecord): number {
-  if (!record.entry_time || !record.exit_time) {
+  // Converter TimeRecord para o formato esperado pela função utilitária
+  // que espera strings HH:MM, mas aqui temos timestamps completos
+  if (!record?.entry_time || !record?.exit_time) {
     return 0;
   }
 
-  const entry = new Date(record.entry_time);
-  const exit = new Date(record.exit_time);
+  try {
+    const entry = new Date(record.entry_time);
+    const exit = new Date(record.exit_time);
 
-  let totalMinutes = (exit.getTime() - entry.getTime()) / (1000 * 60);
+    if (isNaN(entry.getTime()) || isNaN(exit.getTime())) {
+      return 0;
+    }
 
-  // Subtrair tempo de pausa
-  if (record.break_start && record.break_end) {
-    const pauseStart = new Date(record.break_start);
-    const pauseEnd = new Date(record.break_end);
-    const pauseMinutes = (pauseEnd.getTime() - pauseStart.getTime()) / (1000 * 60);
-    totalMinutes -= pauseMinutes;
+    // Converter para formato HH:MM para usar a função utilitária
+    const entryTime = entry.toTimeString().substring(0, 5);
+    const exitTime = exit.toTimeString().substring(0, 5);
+
+    let breakStart = null;
+    let breakEnd = null;
+
+    if (record.break_start) {
+      const breakStartDate = new Date(record.break_start);
+      if (!isNaN(breakStartDate.getTime())) {
+        breakStart = breakStartDate.toTimeString().substring(0, 5);
+      }
+    }
+
+    if (record.break_end) {
+      const breakEndDate = new Date(record.break_end);
+      if (!isNaN(breakEndDate.getTime())) {
+        breakEnd = breakEndDate.toTimeString().substring(0, 5);
+      }
+    }
+
+    return calculateWorkedMinutesUtil(entryTime, breakStart, breakEnd, exitTime);
+  } catch (error) {
+    console.error('Erro ao calcular minutos trabalhados:', error);
+    return 0;
   }
-
-  return Math.round(totalMinutes);
 }
 
-function calculateExpectedMinutes(shift: Shift | null): number {
-  if (!shift) return 0;
-  return shift.total_minutes;
+function calculateExpectedMinutes(shift: Shift | null | undefined): number {
+  return safeParseInt(shift?.total_minutes, 0);
 }
 
-function minutesToHoursString(minutes: number): string {
-  const hours = Math.floor(Math.abs(minutes) / 60);
-  const mins = Math.abs(minutes) % 60;
-  const sign = minutes < 0 ? '-' : '';
-  return `${sign}${hours}h ${mins.toString().padStart(2, '0')}m`;
-}
-
-function formatTime(timeString: string | null): string {
+function formatTime(timeString: string | null | undefined): string {
   if (!timeString) return '-';
-  const date = new Date(timeString);
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  try {
+    const date = new Date(timeString);
+    if (isNaN(date.getTime())) {
+      return '-';
+    }
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '-';
+  }
 }
 
 function getDateRange(period: PeriodType, customStart?: string, customEnd?: string): { start: string; end: string } {
@@ -87,16 +114,23 @@ function getDateRange(period: PeriodType, customStart?: string, customEnd?: stri
   let end: Date = today;
 
   switch (period) {
-    case 'day':
+    case 'today':
       start = today;
       break;
     case 'week':
+      // Início da semana (segunda-feira)
       start = new Date(today);
-      start.setDate(today.getDate() - 7);
+      const dayOfWeek = start.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Se domingo, volta 6 dias, senão volta para segunda
+      start.setDate(start.getDate() + diff);
       break;
     case 'month':
-      start = new Date(today);
-      start.setMonth(today.getMonth() - 1);
+      // Primeiro dia do mês atual
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+    case 'year':
+      // Primeiro dia do ano atual
+      start = new Date(today.getFullYear(), 0, 1);
       break;
     case 'custom':
       if (customStart && customEnd) {
@@ -122,6 +156,17 @@ export function AdvancedReports() {
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [reportData, setReportData] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Função para lidar com mudança de período
+  function handlePeriodChange(newPeriod: PeriodType) {
+    setPeriod(newPeriod);
+
+    if (newPeriod !== 'custom') {
+      // Limpar as datas customizadas quando selecionar um filtro rápido
+      setCustomStartDate('');
+      setCustomEndDate('');
+    }
+  }
 
   useEffect(() => {
     loadEmployees();
@@ -168,12 +213,12 @@ export function AdvancedReports() {
       const rows: ReportRow[] = (data || []).map((record: TimeRecord) => {
         const workedMinutes = calculateWorkedMinutes(record);
         const expectedMinutes = calculateExpectedMinutes(shift);
-        const balance = workedMinutes - expectedMinutes;
+        const balance = (workedMinutes || 0) - (expectedMinutes || 0);
 
         return {
-          date: record.date,
+          date: record?.date || '',
           record,
-          shift,
+          shift: shift || null,
           workedMinutes,
           expectedMinutes,
           balance
@@ -190,9 +235,9 @@ export function AdvancedReports() {
 
   const totals = reportData.reduce(
     (acc, row) => ({
-      worked: acc.worked + row.workedMinutes,
-      expected: acc.expected + row.expectedMinutes,
-      balance: acc.balance + row.balance
+      worked: acc.worked + (row?.workedMinutes || 0),
+      expected: acc.expected + (row?.expectedMinutes || 0),
+      balance: acc.balance + (row?.balance || 0)
     }),
     { worked: 0, expected: 0, balance: 0 }
   );
@@ -242,13 +287,14 @@ export function AdvancedReports() {
             </label>
             <select
               value={period}
-              onChange={(e) => setPeriod(e.target.value as PeriodType)}
+              onChange={(e) => handlePeriodChange(e.target.value as PeriodType)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
               style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
             >
-              <option value="day">Hoje</option>
-              <option value="week">Última Semana</option>
-              <option value="month">Último Mês</option>
+              <option value="today">Hoje</option>
+              <option value="week">Esta Semana</option>
+              <option value="month">Este Mês</option>
+              <option value="year">Este Ano</option>
               <option value="custom">Personalizado</option>
             </select>
           </div>
@@ -357,28 +403,28 @@ export function AdvancedReports() {
                   >
                     <td className="py-4 px-4">
                       <div className="font-medium" style={{ color: '#E0E0E0' }}>
-                        {new Date(row.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        {row?.date ? new Date(row.date + 'T00:00:00').toLocaleDateString('pt-BR') : '--'}
                       </div>
                       <div className="text-xs capitalize" style={{ color: '#E0E0E099' }}>
-                        {new Date(row.date + 'T00:00:00').toLocaleDateString('pt-BR', {
+                        {row?.date ? new Date(row.date + 'T00:00:00').toLocaleDateString('pt-BR', {
                           weekday: 'long'
-                        })}
+                        }) : ''}
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
-                      {formatTime(row.record.entry_time)}
+                      {formatTime(row?.record?.entry_time)}
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
-                      {formatTime(row.record.break_start)}
+                      {formatTime(row?.record?.break_start)}
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
-                      {formatTime(row.record.break_end)}
+                      {formatTime(row?.record?.break_end)}
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
-                      {formatTime(row.record.exit_time)}
+                      {formatTime(row?.record?.exit_time)}
                     </td>
                     <td className="py-4 px-4 text-center">
-                      {row.shift ? (
+                      {row?.shift ? (
                         <div>
                           <div className="font-medium" style={{ color: '#0A6777' }}>
                             {row.shift.name}
@@ -396,7 +442,7 @@ export function AdvancedReports() {
                         className="inline-block px-3 py-1 rounded font-medium"
                         style={{ backgroundColor: '#0A677733', color: '#0A6777' }}
                       >
-                        {minutesToHoursString(row.workedMinutes)}
+                        {formatMinutesToHours(row?.workedMinutes)}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -404,18 +450,18 @@ export function AdvancedReports() {
                         className="inline-block px-3 py-1 rounded font-medium"
                         style={{ backgroundColor: '#3B82F633', color: '#93C5FD' }}
                       >
-                        {minutesToHoursString(row.expectedMinutes)}
+                        {formatMinutesToHours(row?.expectedMinutes)}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center">
                       <span
                         className="inline-block px-3 py-1 rounded font-bold"
                         style={{
-                          backgroundColor: row.balance >= 0 ? '#22C55E33' : '#EF444433',
-                          color: row.balance >= 0 ? '#22C55E' : '#EF4444'
+                          backgroundColor: (row?.balance || 0) >= 0 ? '#22C55E33' : '#EF444433',
+                          color: (row?.balance || 0) >= 0 ? '#22C55E' : '#EF4444'
                         }}
                       >
-                        {minutesToHoursString(row.balance)}
+                        {formatMinutesToHours(row?.balance)}
                       </span>
                     </td>
                   </tr>
@@ -445,7 +491,7 @@ export function AdvancedReports() {
                 Total de Horas Trabalhadas
               </div>
               <div className="text-3xl font-bold" style={{ color: '#0A6777' }}>
-                {minutesToHoursString(totals.worked)}
+                {formatMinutesToHours(totals.worked)}
               </div>
             </div>
 
@@ -457,7 +503,7 @@ export function AdvancedReports() {
                 Total de Horas Previstas
               </div>
               <div className="text-3xl font-bold" style={{ color: '#3B82F6' }}>
-                {minutesToHoursString(totals.expected)}
+                {formatMinutesToHours(totals.expected)}
               </div>
             </div>
 
@@ -475,7 +521,7 @@ export function AdvancedReports() {
                 className="text-3xl font-bold"
                 style={{ color: totals.balance >= 0 ? '#22C55E' : '#EF4444' }}
               >
-                {minutesToHoursString(totals.balance)}
+                {formatMinutesToHours(totals.balance)}
               </div>
               <div className="text-xs mt-2" style={{ color: '#E0E0E099' }}>
                 {totals.balance >= 0 ? 'Horas extras acumuladas' : 'Horas a compensar'}

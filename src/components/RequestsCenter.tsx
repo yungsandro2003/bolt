@@ -315,36 +315,56 @@ const RequestsCenter: React.FC<RequestsCenterProps> = ({ adminUserId }) => {
 
                 {/* Detalhes da Solicitação */}
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '16px',
+                  backgroundColor: '#0A1A2F',
+                  padding: '16px',
+                  borderRadius: '8px',
                   marginBottom: '16px',
                 }}>
-                  <div>
-                    <div style={{ fontSize: '12px', color: '#B0B0B0', marginBottom: '4px' }}>
-                      Campo
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#0A6777' }}>
-                      {getFieldLabel(request.type)}
-                    </div>
+                  <div style={{ fontSize: '14px', color: '#B0B0B0', marginBottom: '12px', fontWeight: '600' }}>
+                    {getFieldLabel(request.type)}
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: '12px', color: '#B0B0B0', marginBottom: '4px' }}>
-                      Valor Atual
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#EF5350' }}>
-                      {formatTime(request.old_time)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: '12px', color: '#B0B0B0', marginBottom: '4px' }}>
-                      Valor Solicitado
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: '500', color: '#66BB6A' }}>
-                      {formatTime(request.new_time)}
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {request.old_time ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '20px' }}>⏱️</span>
+                          <div>
+                            <span style={{ fontSize: '14px', color: '#6B7280' }}>Batida registrada: </span>
+                            <span style={{ fontSize: '16px', fontWeight: '500', color: '#6B7280' }}>
+                              {formatTime(request.old_time)}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '20px' }}>✅</span>
+                          <div>
+                            <span style={{ fontSize: '14px', color: '#0A6777' }}>Solicita alterar para: </span>
+                            <span style={{ fontSize: '18px', fontWeight: '700', color: '#0A6777' }}>
+                              {formatTime(request.new_time)}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '20px' }}>❌</span>
+                          <span style={{ fontSize: '14px', fontWeight: '500', color: '#EF5350' }}>
+                            Batida não registrada
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '20px' }}>✅</span>
+                          <div>
+                            <span style={{ fontSize: '14px', color: '#0A6777' }}>Solicita registrar: </span>
+                            <span style={{ fontSize: '18px', fontWeight: '700', color: '#0A6777' }}>
+                              {formatTime(request.new_time)}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

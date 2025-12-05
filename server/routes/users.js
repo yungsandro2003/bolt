@@ -62,6 +62,58 @@ router.get('/stats', authenticateToken, isAdmin, (req, res) => {
   });
 });
 
+router.put('/:id', authenticateToken, isAdmin, (req, res) => {
+  const { id } = req.params;
+  const { name, email, shift_id } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Nome e email são obrigatórios' });
+  }
+
+  db.get('SELECT * FROM users WHERE id = ? AND role = "employee"', [id], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erro ao buscar funcionário' });
+    }
+    if (!user) {
+      return res.status(404).json({ error: 'Funcionário não encontrado' });
+    }
+
+    db.get('SELECT * FROM users WHERE email = ? AND id != ?', [email, id], (err, existingUser) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao verificar email' });
+      }
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email já está em uso' });
+      }
+
+      db.run(
+        'UPDATE users SET name = ?, email = ?, shift_id = ? WHERE id = ? AND role = "employee"',
+        [name, email, shift_id || null, id],
+        function(err) {
+          if (err) {
+            return res.status(500).json({ error: 'Erro ao atualizar funcionário' });
+          }
+          if (this.changes === 0) {
+            return res.status(404).json({ error: 'Funcionário não encontrado' });
+          }
+
+          db.get(
+            'SELECT u.*, s.name as shift_name FROM users u LEFT JOIN shifts s ON u.shift_id = s.id WHERE u.id = ?',
+            [id],
+            (err, updatedUser) => {
+              if (err) {
+                return res.status(500).json({ error: 'Erro ao buscar funcionário atualizado' });
+              }
+              const { password, ...userWithoutPassword } = updatedUser;
+              res.json(userWithoutPassword);
+            }
+          );
+        }
+      );
+    });
+  });
+});
+
 router.delete('/:id', authenticateToken, isAdmin, (req, res) => {
   db.run('DELETE FROM users WHERE id = ? AND role = "employee"', [req.params.id], function(err) {
     if (err) {

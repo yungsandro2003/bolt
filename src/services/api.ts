@@ -64,6 +64,11 @@ export const api = {
     getAll: () => request('/users'),
     getMe: () => request('/users/me'),
     getStats: () => request('/users/stats'),
+    update: (id: number, data: { name: string; email: string; shift_id?: number }) =>
+      request(`/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
     delete: (id: number) => request(`/users/${id}`, { method: 'DELETE' }),
   },
 
