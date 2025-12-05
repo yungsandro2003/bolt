@@ -24,17 +24,33 @@ npm install
 
 ## Executar o Projeto
 
-Execute frontend e backend simultaneamente:
+### Desenvolvimento (Hot Reload)
+
+Execute frontend e backend simultaneamente com hot reload:
 
 ```bash
 npm run dev
 ```
 
-Ou execute separadamente:
+Acesse:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3000/api
+
+### Produção
+
+Build e execute o servidor (serve frontend e backend):
 
 ```bash
-npm run server  # Backend na porta 3000
-npm run client  # Frontend na porta 5173
+npm run start
+```
+
+Acesse: http://localhost:3000
+
+Ou execute manualmente:
+
+```bash
+npm run build   # Build do frontend
+npm run server  # Inicia apenas o backend
 ```
 
 ## Credenciais Padrão
@@ -91,20 +107,30 @@ O banco de dados é criado automaticamente ao iniciar o servidor.
 
 ### Funcionário
 
-1. **Registrar Ponto**
-   - Botão para registrar ponto (Entrada → Pausa → Retorno → Saída)
-   - Visualização em tempo real das batidas de hoje
-   - Ícones coloridos (🟢 Entrada, 🟡 Pausa, 🟠 Retorno, 🔴 Saída)
+O painel do funcionário possui **menu de navegação** (igual ao admin) com 3 seções:
 
-2. **Meus Relatórios**
-   - Histórico dos últimos 30 dias
-   - Tabela com horários e cálculo de horas
-   - Saldo de horas destacado (verde/vermelho)
+#### 1. **Registrar Ponto** (Página Inicial)
+   - Relógio em tempo real (data e hora)
+   - Botão grande para registrar ponto (determina automaticamente: Entrada → Pausa → Retorno → Saída)
+   - "Batidas de Hoje" em tempo real logo abaixo do botão
+   - Ícones coloridos: 🟢 Entrada | 🟡 Pausa | 🟠 Retorno | 🔴 Saída
+   - Validação: não permite registro duplicado
 
-3. **Solicitações de Ajuste**
-   - Solicitar correção de ponto esquecido
-   - Acompanhar status das solicitações
-   - Histórico de todas as solicitações
+#### 2. **Relatórios**
+   - Filtro de período (7, 15 ou 30 dias)
+   - Tabela completa: Data | Entrada | Pausa | Retorno | Saída | Horas Trabalhadas | Saldo
+   - Cálculo automático validado (sem NaN)
+   - Saldo em **verde** (extras) ou **vermelho** (déficit)
+   - Exibe turno e jornada esperada
+
+#### 3. **Solicitações de Ajuste**
+   - Formulário para solicitar correção de ponto
+   - Campos: Data, Tipo, Horário Correto, Motivo
+   - Lista de "Minhas Solicitações" com status visual:
+     - 🕒 Pendente (amarelo)
+     - ✅ Aprovado (verde)
+     - ❌ Recusado (vermelho)
+   - Histórico completo de solicitações
 
 ## API Endpoints
 

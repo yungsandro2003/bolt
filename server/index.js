@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const setup = require('./setup');
 
 const authRoutes = require('./routes/auth');
@@ -26,6 +27,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'VivaPonto API rodando' });
 });
 
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Erro interno do servidor' });
@@ -34,5 +42,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n🚀 Servidor VivaPonto rodando na porta ${PORT}`);
   console.log(`📊 API disponível em http://localhost:${PORT}/api`);
+  console.log(`🌐 Frontend disponível em http://localhost:${PORT}`);
   console.log(`✨ Pronto para receber requisições!\n`);
 });

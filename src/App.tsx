@@ -8,13 +8,17 @@ import { ShiftManagement } from './components/ShiftManagement';
 import { EmployeeManagement } from './components/EmployeeManagement';
 import { RequestsCenter } from './components/RequestsCenter';
 import { AdvancedReports } from './components/AdvancedReports';
-import { EmployeePanel } from './components/EmployeePanel';
+import { ClockIn } from './components/ClockIn';
+import { Reports } from './components/Reports';
+import { EmployeeRequests } from './components/EmployeeRequests';
 
 type AdminPage = 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports';
+type EmployeePage = 'clock-in' | 'reports' | 'requests';
 
 function AppContent() {
-  const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<AdminPage>('dashboard');
+  const { user, loading, logout } = useAuth();
+  const [adminPage, setAdminPage] = useState<AdminPage>('dashboard');
+  const [employeePage, setEmployeePage] = useState<EmployeePage>('clock-in');
 
   if (loading) {
     return (
@@ -34,13 +38,13 @@ function AppContent() {
   if (user.role === 'admin') {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#0A1A2F' }}>
-        <AdminHeader currentPage={currentPage} onNavigate={setCurrentPage} />
+        <AdminHeader currentPage={adminPage} onNavigate={setAdminPage} />
         <main>
-          {currentPage === 'dashboard' && <AdminDashboard />}
-          {currentPage === 'shifts' && <ShiftManagement />}
-          {currentPage === 'employees' && <EmployeeManagement />}
-          {currentPage === 'requests' && <RequestsCenter adminUserId={user.id} />}
-          {currentPage === 'reports' && <AdvancedReports />}
+          {adminPage === 'dashboard' && <AdminDashboard />}
+          {adminPage === 'shifts' && <ShiftManagement />}
+          {adminPage === 'employees' && <EmployeeManagement />}
+          {adminPage === 'requests' && <RequestsCenter adminUserId={user.id} />}
+          {adminPage === 'reports' && <AdvancedReports />}
         </main>
       </div>
     );
@@ -48,9 +52,16 @@ function AppContent() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A1A2F' }}>
-      <EmployeeHeader />
-      <main>
-        <EmployeePanel userId={user.id} />
+      <EmployeeHeader
+        userName={user.name || user.email}
+        currentPage={employeePage}
+        onNavigate={(page) => setEmployeePage(page as EmployeePage)}
+        onLogout={logout}
+      />
+      <main className="max-w-7xl mx-auto p-6">
+        {employeePage === 'clock-in' && <ClockIn />}
+        {employeePage === 'reports' && <Reports />}
+        {employeePage === 'requests' && <EmployeeRequests />}
       </main>
     </div>
   );
