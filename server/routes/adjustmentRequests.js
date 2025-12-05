@@ -85,45 +85,56 @@ router.put('/:id/approve', authenticateToken, isAdmin, (req, res) => {
       return res.status(400).json({ error: 'Solicitação já foi processada' });
     }
 
-    db.serialize(() => {
-      db.run('BEGIN TRANSACTION');
+    db.get(
+      'SELECT * FROM time_records WHERE user_id = ? AND date = ? AND type = ?',
+      [request.user_id, request.date, request.type],
+      (err, existingRecord) => {
+        if (err) {
+          return res.status(500).json({ error: 'Erro ao verificar registro existente' });
+        }
 
-      db.run(
-        `DELETE FROM time_records WHERE user_id = ? AND date = ? AND type = ?`,
-        [request.user_id, request.date, request.type],
-        (err) => {
-          if (err) {
-            db.run('ROLLBACK');
-            return res.status(500).json({ error: 'Erro ao processar aprovação' });
+        const applyAdjustment = () => {
+          if (existingRecord) {
+            db.run(
+              'UPDATE time_records SET time = ? WHERE id = ?',
+              [request.new_time, existingRecord.id],
+              (err) => {
+                if (err) {
+                  return res.status(500).json({ error: 'Erro ao atualizar registro' });
+                }
+                updateRequestStatus();
+              }
+            );
+          } else {
+            db.run(
+              'INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)',
+              [request.user_id, request.date, request.new_time, request.type],
+              (err) => {
+                if (err) {
+                  return res.status(500).json({ error: 'Erro ao criar registro' });
+                }
+                updateRequestStatus();
+              }
+            );
           }
+        };
 
+        const updateRequestStatus = () => {
           db.run(
-            `INSERT INTO time_records (user_id, date, time, type) VALUES (?, ?, ?, ?)`,
-            [request.user_id, request.date, request.new_time, request.type],
+            'UPDATE adjustment_requests SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?',
+            ['approved', adminId, requestId],
             (err) => {
               if (err) {
-                db.run('ROLLBACK');
-                return res.status(500).json({ error: 'Erro ao processar aprovação' });
+                return res.status(500).json({ error: 'Erro ao atualizar status da solicitação' });
               }
-
-              db.run(
-                `UPDATE adjustment_requests SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                [adminId, requestId],
-                (err) => {
-                  if (err) {
-                    db.run('ROLLBACK');
-                    return res.status(500).json({ error: 'Erro ao processar aprovação' });
-                  }
-
-                  db.run('COMMIT');
-                  res.json({ message: 'Solicitação aprovada com sucesso' });
-                }
-              );
+              res.json({ message: 'Solicitação aprovada com sucesso' });
             }
           );
-        }
-      );
-    });
+        };
+
+        applyAdjustment();
+      }
+    );
   });
 });
 

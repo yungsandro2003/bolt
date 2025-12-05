@@ -42,13 +42,35 @@ router.get('/today', authenticateToken, (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   db.all(
-    'SELECT * FROM time_records WHERE user_id = ? AND date = ? ORDER BY time ASC',
+    'SELECT * FROM time_records WHERE user_id = ? AND date = ? ORDER BY created_at ASC',
     [req.user.id, today],
     (err, rows) => {
       if (err) {
         return res.status(500).json({ error: 'Erro ao buscar registros de hoje' });
       }
-      res.json(rows);
+
+      const record = {
+        id: null,
+        user_id: req.user.id,
+        date: today,
+        entry: null,
+        break_start: null,
+        break_end: null,
+        exit: null,
+        created_at: null,
+        updated_at: null
+      };
+
+      rows.forEach(row => {
+        if (row.type === 'entry') record.entry = row.time;
+        if (row.type === 'break_start') record.break_start = row.time;
+        if (row.type === 'break_end') record.break_end = row.time;
+        if (row.type === 'exit') record.exit = row.time;
+        if (!record.id) record.id = row.id;
+        if (!record.created_at) record.created_at = row.created_at;
+      });
+
+      res.json(record);
     }
   );
 });
@@ -88,30 +110,10 @@ router.get('/report', authenticateToken, (req, res) => {
   let query = `
     SELECT
       date,
-      GROUP_CONCAT(
-        CASE type
-          WHEN 'entry' THEN time
-          ELSE NULL
-        END
-      ) as entry_time,
-      GROUP_CONCAT(
-        CASE type
-          WHEN 'break_start' THEN time
-          ELSE NULL
-        END
-      ) as break_start_time,
-      GROUP_CONCAT(
-        CASE type
-          WHEN 'break_end' THEN time
-          ELSE NULL
-        END
-      ) as break_end_time,
-      GROUP_CONCAT(
-        CASE type
-          WHEN 'exit' THEN time
-          ELSE NULL
-        END
-      ) as exit_time
+      MAX(CASE WHEN type = 'entry' THEN time END) as entry,
+      MAX(CASE WHEN type = 'break_start' THEN time END) as break_start,
+      MAX(CASE WHEN type = 'break_end' THEN time END) as break_end,
+      MAX(CASE WHEN type = 'exit' THEN time END) as exit
     FROM time_records
     WHERE 1=1
   `;
@@ -135,6 +137,7 @@ router.get('/report', authenticateToken, (req, res) => {
 
   db.all(query, params, (err, rows) => {
     if (err) {
+      console.error('Erro na query de relatório:', err);
       return res.status(500).json({ error: 'Erro ao gerar relatório' });
     }
     res.json(rows);

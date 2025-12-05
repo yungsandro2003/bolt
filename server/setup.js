@@ -67,10 +67,8 @@ async function setup() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id INTEGER NOT NULL,
           date TEXT NOT NULL,
-          entry TEXT,
-          break_start TEXT,
-          break_end TEXT,
-          exit TEXT,
+          time TEXT NOT NULL,
+          type TEXT NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id)
         )

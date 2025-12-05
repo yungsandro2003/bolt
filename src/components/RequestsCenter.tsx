@@ -46,7 +46,17 @@ const RequestsCenter: React.FC<RequestsCenterProps> = ({ adminUserId }) => {
     try {
       setLoading(true);
       const data = await api.adjustmentRequests.getAll();
-      setRequests(data || []);
+
+      const mappedData = (data || []).map((req: any) => ({
+        ...req,
+        user: {
+          id: req.user_id,
+          name: req.user_name || 'Usuário desconhecido',
+          email: req.user_email || ''
+        }
+      }));
+
+      setRequests(mappedData);
     } catch (error) {
       console.error('Erro ao buscar solicitações:', error);
       alert('Erro ao carregar solicitações');

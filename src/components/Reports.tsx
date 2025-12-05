@@ -29,15 +29,67 @@ type UserData = {
   };
 };
 
+type PeriodType = 'today' | 'week' | 'month' | 'custom';
+
 export function Reports() {
-  const [period, setPeriod] = useState<7 | 15 | 30>(7);
+  const [period, setPeriod] = useState<PeriodType>('week');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [reportData, setReportData] = useState<ReportRecord[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
-  }, [period]);
+  }, [period, customStartDate, customEndDate]);
+
+  const getDateRange = () => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (period) {
+      case 'today':
+        start = today;
+        end = today;
+        break;
+
+      case 'week':
+        start = new Date(today);
+        start.setDate(today.getDate() - today.getDay() + 1);
+        end = today;
+        break;
+
+      case 'month':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = today;
+        break;
+
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return { start: customStartDate, end: customEndDate };
+        }
+        start = today;
+        end = today;
+        break;
+
+      default:
+        start = today;
+        end = today;
+    }
+
+    const formatDateString = (date: Date) => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      start: formatDateString(start),
+      end: formatDateString(end)
+    };
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -45,20 +97,11 @@ export function Reports() {
       const user = await api.users.getMe();
       setUserData(user);
 
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - period);
-
-      const formatDateString = (date: Date) => {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
+      const { start, end } = getDateRange();
 
       const report = await api.timeRecords.getReport({
-        start_date: formatDateString(startDate),
-        end_date: formatDateString(endDate),
+        start_date: start,
+        end_date: end,
       });
 
       setReportData(report);
@@ -83,30 +126,76 @@ export function Reports() {
       style={{ backgroundColor: '#253A4A' }}
       className="rounded-lg shadow-lg p-8"
     >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
+      <div className="mb-6">
+        <div className="flex items-center space-x-3 mb-4">
           <FileText style={{ color: '#0A6777' }} className="w-8 h-8" />
           <h2 style={{ color: '#E0E0E0' }} className="text-2xl font-bold">
             Meus Relatórios
           </h2>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Calendar style={{ color: '#E0E0E0' }} className="w-5 h-5" />
-          <select
-            value={period}
-            onChange={(e) => setPeriod(Number(e.target.value) as 7 | 15 | 30)}
-            style={{
-              backgroundColor: '#0A1A2F',
-              color: '#E0E0E0',
-              border: '1px solid #0A6777',
-            }}
-            className="px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
-          >
-            <option value={7}>Últimos 7 dias</option>
-            <option value={15}>Últimos 15 dias</option>
-            <option value={30}>Últimos 30 dias</option>
-          </select>
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center space-x-2">
+            <Calendar style={{ color: '#E0E0E0' }} className="w-5 h-5" />
+            <select
+              value={period}
+              onChange={(e) => {
+                setPeriod(e.target.value as PeriodType);
+                if (e.target.value !== 'custom') {
+                  setCustomStartDate('');
+                  setCustomEndDate('');
+                }
+              }}
+              style={{
+                backgroundColor: '#0A1A2F',
+                color: '#E0E0E0',
+                border: '1px solid #0A6777',
+              }}
+              className="px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
+            >
+              <option value="today">Hoje</option>
+              <option value="week">Esta Semana</option>
+              <option value="month">Este Mês</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+
+          {period === 'custom' && (
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <label style={{ color: '#E0E0E0' }} className="text-sm">
+                  De:
+                </label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  style={{
+                    backgroundColor: '#0A1A2F',
+                    color: '#E0E0E0',
+                    border: '1px solid #0A6777',
+                  }}
+                  className="px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <label style={{ color: '#E0E0E0' }} className="text-sm">
+                  Até:
+                </label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  style={{
+                    backgroundColor: '#0A1A2F',
+                    color: '#E0E0E0',
+                    border: '1px solid #0A6777',
+                  }}
+                  className="px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
