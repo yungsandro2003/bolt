@@ -7,6 +7,7 @@ import {
   formatTime as formatTimeUtil,
   safeParseInt
 } from '../utils/timeCalculations';
+import { generateDateRange } from '../utils/dateUtils';
 
 type User = {
   id: number;
@@ -209,14 +210,31 @@ export function AdvancedReports() {
       const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
       const shift = selectedEmployee?.shift || null;
 
-      // Processar dados do relatório
-      const rows: ReportRow[] = (data || []).map((record: TimeRecord) => {
+      // Gerar calendário completo com todas as datas do período
+      const allDates = generateDateRange(dateRange.start, dateRange.end);
+
+      // Processar dados do relatório - uma linha para cada data
+      const rows: ReportRow[] = allDates.map((date) => {
+        // Buscar registro existente para esta data
+        const existingRecord = (data || []).find((record: any) => record.date === date);
+
+        // Se não houver registro, criar um TimeRecord vazio
+        const record: TimeRecord = existingRecord || {
+          id: 0,
+          user_id: selectedEmployeeId,
+          date: date,
+          entry_time: null,
+          break_start: null,
+          break_end: null,
+          exit_time: null,
+        };
+
         const workedMinutes = calculateWorkedMinutes(record);
         const expectedMinutes = calculateExpectedMinutes(shift);
         const balance = (workedMinutes || 0) - (expectedMinutes || 0);
 
         return {
-          date: record?.date || '',
+          date: date,
           record,
           shift: shift || null,
           workedMinutes,
@@ -349,13 +367,6 @@ export function AdvancedReports() {
             ></div>
             <p className="mt-4" style={{ color: '#E0E0E099' }}>
               Carregando relatório...
-            </p>
-          </div>
-        ) : reportData.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar className="w-16 h-16 mx-auto mb-4" style={{ color: '#E0E0E04D' }} />
-            <p style={{ color: '#E0E0E099' }}>
-              Nenhum registro encontrado para o período selecionado
             </p>
           </div>
         ) : (

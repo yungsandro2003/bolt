@@ -9,6 +9,7 @@ import {
   formatDate,
   safeParseInt
 } from '../utils/timeCalculations';
+import { generateDateRange, formatDate as formatDateDisplay, getDayOfWeek } from '../utils/dateUtils';
 
 type ReportRecord = {
   date: string;
@@ -116,9 +117,21 @@ export function Reports() {
     return safeParseInt(userData?.shift?.total_minutes, 480);
   };
 
-  const formatDateDisplay = (dateString: string): string => {
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
+  const generateCompleteCalendar = () => {
+    const { start, end } = getDateRange();
+    const allDates = generateDateRange(start, end);
+
+    return allDates.map((date) => {
+      const existingRecord = reportData.find((record) => record.date === date);
+
+      return {
+        date,
+        entry: existingRecord?.entry || null,
+        break_start: existingRecord?.break_start || null,
+        break_end: existingRecord?.break_end || null,
+        exit: existingRecord?.exit || null,
+      };
+    });
   };
 
   return (
@@ -254,18 +267,7 @@ export function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {reportData.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      style={{ color: '#6B7280' }}
-                      className="text-center py-8"
-                    >
-                      Nenhum registro encontrado para o período selecionado
-                    </td>
-                  </tr>
-                ) : (
-                  reportData.map((record, index) => {
+                {generateCompleteCalendar().map((record, index) => {
                     const workedMinutes = calculateWorkedMinutes(
                       record?.entry,
                       record?.break_start,
@@ -288,7 +290,8 @@ export function Reports() {
                           style={{ color: '#E0E0E0' }}
                           className="px-4 py-3 text-sm"
                         >
-                          {formatDateDisplay(record?.date || '')}
+                          <div>{formatDateDisplay(record?.date || '')}</div>
+                          <div style={{ color: '#6B7280', fontSize: '0.75rem' }}>{getDayOfWeek(record?.date || '')}</div>
                         </td>
                         <td
                           style={{
@@ -346,8 +349,7 @@ export function Reports() {
                         </td>
                       </tr>
                     );
-                  })
-                )}
+                  })}
               </tbody>
             </table>
           </div>

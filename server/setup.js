@@ -87,8 +87,11 @@ async function setup() {
           type TEXT NOT NULL,
           reason TEXT NOT NULL,
           status TEXT DEFAULT 'pending',
+          reviewed_by INTEGER,
+          reviewed_at DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id)
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          FOREIGN KEY (reviewed_by) REFERENCES users(id)
         )
       `, (err) => {
         if (err) console.error('Erro ao criar tabela adjustment_requests:', err);
