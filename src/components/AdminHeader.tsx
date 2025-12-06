@@ -1,12 +1,13 @@
-import { Clock, LogOut, User } from 'lucide-react';
+import { Clock, LogOut, User, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 type AdminHeaderProps = {
-  currentPage: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports';
-  onNavigate: (page: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports') => void;
+  currentPage: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual';
+  onNavigate: (page: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual') => void;
+  onRefresh?: () => void;
 };
 
-export function AdminHeader({ currentPage, onNavigate }: AdminHeaderProps) {
+export function AdminHeader({ currentPage, onNavigate, onRefresh }: AdminHeaderProps) {
   const { user, logout } = useAuth();
 
   return (
@@ -74,8 +75,28 @@ export function AdminHeader({ currentPage, onNavigate }: AdminHeaderProps) {
             >
               Relatórios
             </button>
+            <button
+              onClick={() => onNavigate('manual')}
+              style={{
+                backgroundColor: currentPage === 'manual' ? '#0A6777' : 'transparent',
+                color: currentPage === 'manual' ? 'white' : '#E0E0E0'
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+            >
+              Ajustes Manuais
+            </button>
 
             <div className="ml-4 pl-4 border-l flex items-center space-x-2" style={{ borderColor: '#0A67774D' }}>
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="p-2 rounded-lg transition-colors hover:opacity-80"
+                  style={{ backgroundColor: '#0A1A2F', color: '#0A6777' }}
+                  title="Recarregar dados"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              )}
               <div className="flex items-center space-x-2 px-3 py-1 rounded-lg" style={{ backgroundColor: '#0A1A2F' }}>
                 <User className="w-4 h-4" style={{ color: '#0A6777' }} />
                 <span className="text-sm" style={{ color: '#E0E0E0' }}>{user?.email}</span>

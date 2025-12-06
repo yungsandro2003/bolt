@@ -69,8 +69,13 @@ async function setup() {
           date TEXT NOT NULL,
           time TEXT NOT NULL,
           type TEXT NOT NULL,
+          edited_by_admin INTEGER DEFAULT 0,
+          admin_id INTEGER,
+          admin_justification TEXT,
+          edited_at DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id)
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          FOREIGN KEY (admin_id) REFERENCES users(id)
         )
       `, (err) => {
         if (err) console.error('Erro ao criar tabela time_records:', err);

@@ -8,17 +8,23 @@ import { ShiftManagement } from './components/ShiftManagement';
 import { EmployeeManagement } from './components/EmployeeManagement';
 import { RequestsCenter } from './components/RequestsCenter';
 import { AdvancedReports } from './components/AdvancedReports';
+import { ManualAdjustments } from './components/ManualAdjustments';
 import { ClockIn } from './components/ClockIn';
 import { Reports } from './components/Reports';
 import { EmployeeRequests } from './components/EmployeeRequests';
 
-type AdminPage = 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports';
+type AdminPage = 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual';
 type EmployeePage = 'clock-in' | 'reports' | 'requests';
 
 function AppContent() {
   const { user, loading, logout } = useAuth();
   const [adminPage, setAdminPage] = useState<AdminPage>('dashboard');
   const [employeePage, setEmployeePage] = useState<EmployeePage>('clock-in');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   if (loading) {
     return (
@@ -38,13 +44,14 @@ function AppContent() {
   if (user.role === 'admin') {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#0A1A2F' }}>
-        <AdminHeader currentPage={adminPage} onNavigate={setAdminPage} />
+        <AdminHeader currentPage={adminPage} onNavigate={setAdminPage} onRefresh={handleRefresh} />
         <main>
-          {adminPage === 'dashboard' && <AdminDashboard />}
-          {adminPage === 'shifts' && <ShiftManagement />}
-          {adminPage === 'employees' && <EmployeeManagement />}
-          {adminPage === 'requests' && <RequestsCenter adminUserId={user.id} />}
-          {adminPage === 'reports' && <AdvancedReports />}
+          {adminPage === 'dashboard' && <AdminDashboard key={refreshKey} />}
+          {adminPage === 'shifts' && <ShiftManagement key={refreshKey} />}
+          {adminPage === 'employees' && <EmployeeManagement key={refreshKey} />}
+          {adminPage === 'requests' && <RequestsCenter adminUserId={user.id} key={refreshKey} />}
+          {adminPage === 'reports' && <AdvancedReports key={refreshKey} />}
+          {adminPage === 'manual' && <ManualAdjustments key={refreshKey} />}
         </main>
       </div>
     );
@@ -57,11 +64,12 @@ function AppContent() {
         currentPage={employeePage}
         onNavigate={(page) => setEmployeePage(page as EmployeePage)}
         onLogout={logout}
+        onRefresh={handleRefresh}
       />
       <main className="max-w-7xl mx-auto p-6">
-        {employeePage === 'clock-in' && <ClockIn />}
-        {employeePage === 'reports' && <Reports />}
-        {employeePage === 'requests' && <EmployeeRequests />}
+        {employeePage === 'clock-in' && <ClockIn key={refreshKey} />}
+        {employeePage === 'reports' && <Reports key={refreshKey} />}
+        {employeePage === 'requests' && <EmployeeRequests key={refreshKey} />}
       </main>
     </div>
   );

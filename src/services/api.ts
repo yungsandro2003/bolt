@@ -136,4 +136,30 @@ export const api = {
         method: 'PUT',
       }),
   },
+
+  manual: {
+    getRecords: (userId: number, date: string) =>
+      request(`/manual/records/${userId}/${date}`),
+    add: (data: {
+      user_id: number;
+      date: string;
+      time: string;
+      type: string;
+      justification: string;
+    }) =>
+      request('/manual/add', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    edit: (id: number, data: { time: string; justification: string }) =>
+      request(`/manual/edit/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: number, justification: string) =>
+      request(`/manual/delete/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ justification }),
+      }),
+  },
 };

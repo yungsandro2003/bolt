@@ -1,13 +1,14 @@
-import { Clock, User, LogOut } from 'lucide-react';
+import { Clock, User, LogOut, RefreshCw } from 'lucide-react';
 
 type EmployeeHeaderProps = {
   userName: string;
   currentPage: string;
   onNavigate: (page: string) => void;
   onLogout: () => void;
+  onRefresh?: () => void;
 };
 
-export function EmployeeHeader({ userName, currentPage, onNavigate, onLogout }: EmployeeHeaderProps) {
+export function EmployeeHeader({ userName, currentPage, onNavigate, onLogout, onRefresh }: EmployeeHeaderProps) {
   const menuItems = [
     { id: 'clock-in', label: 'Registrar Ponto' },
     { id: 'reports', label: 'Relatórios' },
@@ -61,6 +62,22 @@ export function EmployeeHeader({ userName, currentPage, onNavigate, onLogout }: 
               className="ml-4 pl-4 border-l flex items-center space-x-2"
               style={{ borderColor: '#0A67774D' }}
             >
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="p-2 rounded-lg transition-all"
+                  style={{ backgroundColor: '#253A4A', color: '#0A6777' }}
+                  title="Recarregar dados"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0d9488';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#253A4A';
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              )}
               <div
                 className="flex items-center space-x-2 px-3 py-1 rounded-lg"
                 style={{ backgroundColor: '#253A4A' }}
