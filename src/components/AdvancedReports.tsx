@@ -29,13 +29,13 @@ type Shift = {
 };
 
 type TimeRecord = {
-  id: number;
-  user_id: number;
+  id?: number;
+  user_id?: number;
   date: string;
-  entry_time: string | null;
+  entry: string | null;
   break_start: string | null;
   break_end: string | null;
-  exit_time: string | null;
+  exit: string | null;
 };
 
 type PeriodType = 'today' | 'week' | 'month' | 'year' | 'custom';
@@ -50,46 +50,16 @@ interface ReportRow {
 }
 
 function calculateWorkedMinutes(record: TimeRecord): number {
-  // Converter TimeRecord para o formato esperado pela função utilitária
-  // que espera strings HH:MM, mas aqui temos timestamps completos
-  if (!record?.entry_time || !record?.exit_time) {
+  if (!record?.entry || !record?.exit) {
     return 0;
   }
 
-  try {
-    const entry = new Date(record.entry_time);
-    const exit = new Date(record.exit_time);
-
-    if (isNaN(entry.getTime()) || isNaN(exit.getTime())) {
-      return 0;
-    }
-
-    // Converter para formato HH:MM para usar a função utilitária
-    const entryTime = entry.toTimeString().substring(0, 5);
-    const exitTime = exit.toTimeString().substring(0, 5);
-
-    let breakStart = null;
-    let breakEnd = null;
-
-    if (record.break_start) {
-      const breakStartDate = new Date(record.break_start);
-      if (!isNaN(breakStartDate.getTime())) {
-        breakStart = breakStartDate.toTimeString().substring(0, 5);
-      }
-    }
-
-    if (record.break_end) {
-      const breakEndDate = new Date(record.break_end);
-      if (!isNaN(breakEndDate.getTime())) {
-        breakEnd = breakEndDate.toTimeString().substring(0, 5);
-      }
-    }
-
-    return calculateWorkedMinutesUtil(entryTime, breakStart, breakEnd, exitTime);
-  } catch (error) {
-    console.error('Erro ao calcular minutos trabalhados:', error);
-    return 0;
-  }
+  return calculateWorkedMinutesUtil(
+    record.entry,
+    record.break_start,
+    record.break_end,
+    record.exit
+  );
 }
 
 function calculateExpectedMinutes(shift: Shift | null | undefined): number {
@@ -99,11 +69,7 @@ function calculateExpectedMinutes(shift: Shift | null | undefined): number {
 function formatTime(timeString: string | null | undefined): string {
   if (!timeString) return '-';
   try {
-    const date = new Date(timeString);
-    if (isNaN(date.getTime())) {
-      return '-';
-    }
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return timeString.substring(0, 5);
   } catch {
     return '-';
   }
@@ -220,13 +186,11 @@ export function AdvancedReports() {
 
         // Se não houver registro, criar um TimeRecord vazio
         const record: TimeRecord = existingRecord || {
-          id: 0,
-          user_id: selectedEmployeeId,
           date: date,
-          entry_time: null,
+          entry: null,
           break_start: null,
           break_end: null,
-          exit_time: null,
+          exit: null,
         };
 
         const workedMinutes = calculateWorkedMinutes(record);
@@ -423,7 +387,7 @@ export function AdvancedReports() {
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
-                      {formatTime(row?.record?.entry_time)}
+                      {formatTime(row?.record?.entry)}
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
                       {formatTime(row?.record?.break_start)}
@@ -432,7 +396,7 @@ export function AdvancedReports() {
                       {formatTime(row?.record?.break_end)}
                     </td>
                     <td className="py-4 px-4 text-center" style={{ color: '#E0E0E0' }}>
-                      {formatTime(row?.record?.exit_time)}
+                      {formatTime(row?.record?.exit)}
                     </td>
                     <td className="py-4 px-4 text-center">
                       {row?.shift ? (
@@ -441,7 +405,7 @@ export function AdvancedReports() {
                             {row.shift.name}
                           </div>
                           <div className="text-xs" style={{ color: '#E0E0E099' }}>
-                            {formatTime(row.shift.start_time)} - {formatTime(row.shift.end_time)}
+                            {row.shift.start_time} - {row.shift.end_time}
                           </div>
                         </div>
                       ) : (
