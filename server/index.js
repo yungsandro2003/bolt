@@ -16,23 +16,24 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ charset: 'utf-8' }));
-app.use((req, res, next) => {
+
+const apiJsonMiddleware = (req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
-});
+};
 
 async function startServer() {
   await setup();
 
-  app.use('/api/auth', authRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/shifts', shiftRoutes);
-  app.use('/api/time-records', timeRecordRoutes);
-  app.use('/api/adjustment-requests', adjustmentRequestRoutes);
-  app.use('/api/manual', manualAdjustmentsRoutes);
-  app.use('/api/debug', debugRoutes);
+  app.use('/api/auth', apiJsonMiddleware, authRoutes);
+  app.use('/api/users', apiJsonMiddleware, userRoutes);
+  app.use('/api/shifts', apiJsonMiddleware, shiftRoutes);
+  app.use('/api/time-records', apiJsonMiddleware, timeRecordRoutes);
+  app.use('/api/adjustment-requests', apiJsonMiddleware, adjustmentRequestRoutes);
+  app.use('/api/manual', apiJsonMiddleware, manualAdjustmentsRoutes);
+  app.use('/api/debug', apiJsonMiddleware, debugRoutes);
 
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', apiJsonMiddleware, (req, res) => {
     res.json({ status: 'ok', message: 'VivaPonto API rodando' });
   });
 
