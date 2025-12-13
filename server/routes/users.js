@@ -6,15 +6,45 @@ const router = express.Router();
 
 router.get('/', authenticateToken, isAdmin, (req, res) => {
   db.all(
-    `SELECT u.*, s.name as shift_name FROM users u
-     LEFT JOIN shifts s ON u.shift_id = s.id
-     WHERE u.role = 'employee'`,
+    `SELECT
+      u.id, u.name, u.email, u.cpf, u.role, u.shift_id, u.created_at,
+      s.id as shift_id_full,
+      s.name as shift_name,
+      s.start_time as shift_start_time,
+      s.break_start as shift_break_start,
+      s.break_end as shift_break_end,
+      s.end_time as shift_end_time,
+      s.total_minutes as shift_total_minutes
+    FROM users u
+    LEFT JOIN shifts s ON u.shift_id = s.id
+    WHERE u.role = 'employee'`,
     [],
     (err, rows) => {
       if (err) {
         return res.status(500).json({ error: 'Erro ao buscar funcionários' });
       }
-      res.json(rows);
+
+      const users = rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        cpf: row.cpf,
+        role: row.role,
+        shift_id: row.shift_id,
+        created_at: row.created_at,
+        shift_name: row.shift_name,
+        shift: row.shift_id ? {
+          id: row.shift_id_full,
+          name: row.shift_name,
+          start_time: row.shift_start_time,
+          break_start: row.shift_break_start,
+          break_end: row.shift_break_end,
+          end_time: row.shift_end_time,
+          total_minutes: row.shift_total_minutes
+        } : null
+      }));
+
+      res.json(users);
     }
   );
 });
