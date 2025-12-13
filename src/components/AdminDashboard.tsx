@@ -47,7 +47,11 @@ interface Employee {
   email: string;
 }
 
-export function AdminDashboard() {
+interface AdminDashboardProps {
+  onRequestProcessed?: () => void;
+}
+
+export function AdminDashboard({ onRequestProcessed }: AdminDashboardProps = {}) {
   const [stats, setStats] = useState<Stats>({
     totalEmployees: 0,
     pendingRequests: 0,
@@ -128,6 +132,7 @@ export function AdminDashboard() {
     try {
       await api.adjustmentRequests.approve(requestId);
       await loadDashboardData();
+      onRequestProcessed?.();
       alert('Solicitação aprovada com sucesso!');
     } catch (error) {
       console.error('Error approving request:', error);
@@ -139,6 +144,7 @@ export function AdminDashboard() {
     try {
       await api.adjustmentRequests.reject(requestId);
       await loadDashboardData();
+      onRequestProcessed?.();
       alert('Solicitação rejeitada');
     } catch (error) {
       console.error('Error rejecting request:', error);

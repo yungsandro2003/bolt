@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, Clock, AlertCircle, Calendar, User } from 'lucide
 
 type RequestsCenterProps = {
   adminUserId: number;
+  onRequestProcessed?: () => void;
 };
 
 type FilterStatus = 'pending' | 'approved' | 'rejected' | 'all';
@@ -27,7 +28,7 @@ type AdjustmentRequest = {
   };
 };
 
-const RequestsCenter: React.FC<RequestsCenterProps> = ({ adminUserId }) => {
+const RequestsCenter: React.FC<RequestsCenterProps> = ({ adminUserId, onRequestProcessed }) => {
   const [requests, setRequests] = useState<AdjustmentRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<AdjustmentRequest[]>([]);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
@@ -85,6 +86,7 @@ const RequestsCenter: React.FC<RequestsCenterProps> = ({ adminUserId }) => {
 
       alert('Solicitação aprovada com sucesso!');
       await fetchRequests();
+      onRequestProcessed?.();
     } catch (error) {
       console.error('Erro ao aprovar solicitação:', error);
       alert('Erro ao aprovar solicitação');
@@ -105,6 +107,7 @@ const RequestsCenter: React.FC<RequestsCenterProps> = ({ adminUserId }) => {
 
       alert('Solicitação rejeitada!');
       await fetchRequests();
+      onRequestProcessed?.();
     } catch (error) {
       console.error('Erro ao rejeitar solicitação:', error);
       alert('Erro ao rejeitar solicitação');

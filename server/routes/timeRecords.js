@@ -92,7 +92,7 @@ router.post('/', authenticateToken, (req, res) => {
   const { type } = req.body;
   const user_id = req.user.id;
   const date = new Date().toISOString().split('T')[0];
-  const time = new Date().toISOString().split('T')[1].substring(0, 8);
+  const time = new Date().toISOString().split('T')[1].substring(0, 5);
 
   console.log('\n🔵 [POST /time-records] INÍCIO DO REGISTRO');
   console.log('📥 Dados recebidos:', { type, user_id, date, time });

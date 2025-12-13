@@ -71,10 +71,10 @@ function AppContent() {
           pendingCount={pendingCount}
         />
         <main>
-          {adminPage === 'dashboard' && <AdminDashboard key={refreshKey} />}
+          {adminPage === 'dashboard' && <AdminDashboard key={refreshKey} onRequestProcessed={loadPendingCount} />}
           {adminPage === 'shifts' && <ShiftManagement key={refreshKey} />}
           {adminPage === 'employees' && <EmployeeManagement key={refreshKey} />}
-          {adminPage === 'requests' && <RequestsCenter adminUserId={user.id} key={refreshKey} />}
+          {adminPage === 'requests' && <RequestsCenter adminUserId={user.id} key={refreshKey} onRequestProcessed={loadPendingCount} />}
           {adminPage === 'reports' && <AdvancedReports key={refreshKey} />}
           {adminPage === 'manual' && <ManualAdjustments key={refreshKey} />}
           {adminPage === 'mirror' && <MirrorReport key={refreshKey} />}
