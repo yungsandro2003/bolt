@@ -13,19 +13,19 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh, pendingCount }
 
   return (
     <header style={{ backgroundColor: '#1E3A36' }} className="shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-3">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             <div style={{ backgroundColor: '#0A6777' }} className="p-2 rounded-lg">
               <Clock className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h1 style={{ color: '#E0E0E0' }} className="text-xl font-bold">VivaPonto Admin</h1>
-              <p style={{ color: '#E0E0E0', opacity: 0.7 }} className="text-xs">Painel Administrativo</p>
+            <div className="hidden sm:block">
+              <h1 style={{ color: '#E0E0E0' }} className="text-xl font-bold whitespace-nowrap">VivaPonto Admin</h1>
+              <p style={{ color: '#E0E0E0', opacity: 0.7 }} className="text-xs whitespace-nowrap">Painel Administrativo</p>
             </div>
           </div>
 
-          <nav className="flex items-center space-x-1">
+          <nav className="flex items-center space-x-1 overflow-x-auto flex-1 justify-end">
             <button
               onClick={() => onNavigate('dashboard')}
               style={{
@@ -62,10 +62,10 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh, pendingCount }
                 backgroundColor: currentPage === 'requests' ? '#0A6777' : 'transparent',
                 color: currentPage === 'requests' ? 'white' : '#E0E0E0'
               }}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 relative"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 relative whitespace-nowrap"
             >
               Solicitações
-              {pendingCount && pendingCount > 0 && (
+              {typeof pendingCount === 'number' && pendingCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold"
                   style={{ backgroundColor: '#EF4444', color: 'white' }}
