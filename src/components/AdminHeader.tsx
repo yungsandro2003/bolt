@@ -102,7 +102,7 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh, pendingCount }
               }}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
             >
-              Espelho Ponto
+              Cartão Ponto
             </button>
 
             <div className="ml-4 pl-4 border-l flex items-center space-x-2" style={{ borderColor: '#0A67774D' }}>

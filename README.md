@@ -134,11 +134,13 @@ O banco de dados é criado automaticamente ao iniciar o servidor com índices ot
    - Indicador visual de batidas editadas pelo admin
    - Filtro por funcionário e data
 
-7. **Espelho de Ponto** (NOVO)
+7. **Cartão de Ponto** (NOVO)
    - Relatório mensal completo por funcionário
    - Tabela com todas as batidas do mês
    - Cálculo de saldo diário e total
-   - Botão de impressão (CSS otimizado para documento oficial)
+   - Botão de impressão profissional
+   - CSS otimizado para impressão em A4
+   - Remove fundos escuros e adapta cores para papel
    - Filtro por funcionário e mês/ano
 
 ### Funcionário

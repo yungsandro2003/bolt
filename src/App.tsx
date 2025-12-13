@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { AdminHeader } from './components/AdminHeader';
@@ -40,11 +40,11 @@ function AppContent() {
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     loadPendingCount();
     const interval = setInterval(loadPendingCount, 30000);
     return () => clearInterval(interval);
-  });
+  }, [user]);
 
   if (loading) {
     return (

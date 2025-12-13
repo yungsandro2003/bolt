@@ -153,37 +153,95 @@ export function MirrorReport() {
       <style>
         {`
           @media print {
+            @page {
+              size: A4 portrait;
+              margin: 1cm;
+            }
+
             body * {
               visibility: hidden;
             }
+
             .print-area, .print-area * {
               visibility: visible;
             }
+
             .print-area {
               position: absolute;
               left: 0;
               top: 0;
               width: 100%;
+              background: white !important;
             }
+
             .no-print {
               display: none !important;
             }
+
             .print-header {
               margin-bottom: 20px;
               padding-bottom: 10px;
               border-bottom: 2px solid #000;
+              background: white !important;
             }
+
+            .print-header h1 {
+              color: #000 !important;
+              font-size: 20pt;
+              font-weight: bold;
+            }
+
+            .print-header p {
+              color: #000 !important;
+              font-size: 10pt;
+            }
+
             table {
               border-collapse: collapse;
               width: 100%;
+              background: white !important;
+              page-break-inside: auto;
             }
+
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+              background: white !important;
+            }
+
+            thead {
+              display: table-header-group;
+            }
+
+            tfoot {
+              display: table-footer-group;
+            }
+
             th, td {
-              border: 1px solid #000;
-              padding: 8px;
+              border: 1px solid #000 !important;
+              padding: 6px 8px;
               text-align: left;
+              color: #000 !important;
+              background: white !important;
+              font-size: 9pt;
             }
+
             th {
-              background-color: #f0f0f0 !important;
+              background-color: #e0e0e0 !important;
+              font-weight: bold;
+              font-size: 10pt;
+            }
+
+            tfoot td {
+              background-color: #f5f5f5 !important;
+              font-weight: bold;
+              font-size: 11pt;
+            }
+
+            .print-footer {
+              margin-top: 20px;
+              font-size: 8pt;
+              color: #666 !important;
             }
           }
         `}
@@ -194,7 +252,7 @@ export function MirrorReport() {
           <div className="flex items-center space-x-3">
             <FileText style={{ color: '#0A6777' }} className="w-8 h-8" />
             <h2 style={{ color: '#E0E0E0' }} className="text-3xl font-bold">
-              Espelho de Ponto
+              Cartão de Ponto
             </h2>
           </div>
           <button
@@ -203,7 +261,7 @@ export function MirrorReport() {
             style={{ backgroundColor: '#0A6777', color: 'white' }}
           >
             <Printer className="w-5 h-5" />
-            <span>Imprimir Espelho</span>
+            <span>Imprimir Cartão</span>
           </button>
         </div>
 
@@ -246,7 +304,7 @@ export function MirrorReport() {
       <div className="print-area">
         <div className="print-header mb-6">
           <h1 className="text-2xl font-bold text-center" style={{ color: '#0A6777' }}>
-            ESPELHO DE PONTO
+            CARTÃO DE PONTO
           </h1>
           {selectedEmployee && (
             <div className="mt-4">
