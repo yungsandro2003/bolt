@@ -152,22 +152,6 @@ export function AdminDashboard({ onRequestProcessed }: AdminDashboardProps = {})
     }
   };
 
-  const handleSeedData = async () => {
-    const confirmed = confirm(
-      'Isso irá gerar dados de teste para o admin (você). Os registros do mês atual serão substituídos. Deseja continuar?'
-    );
-
-    if (!confirmed) return;
-
-    try {
-      const result = await api.debug.seedScenarios(1);
-      alert(`Dados de teste gerados com sucesso!\n\n${result.scenarios.map((s: any) => `${s.description}: ${s.details}`).join('\n')}`);
-      await loadDashboardData();
-    } catch (error: any) {
-      console.error('Erro ao gerar dados de teste:', error);
-      alert('Erro ao gerar dados de teste: ' + (error.message || 'Erro desconhecido'));
-    }
-  };
 
   const formatFieldName = (type: string): string => {
     const fieldNames: { [key: string]: string } = {
@@ -380,26 +364,6 @@ export function AdminDashboard({ onRequestProcessed }: AdminDashboardProps = {})
               </div>
             )}
           </div>
-        </div>
-
-        {/* Developer Tools */}
-        <div className="mt-8 p-6 rounded-lg shadow-lg" style={{ backgroundColor: '#253A4A' }}>
-          <h2 className="text-xl font-bold mb-4" style={{ color: '#E0E0E0' }}>
-            Ferramentas de Desenvolvimento
-          </h2>
-          <p className="text-sm mb-4" style={{ color: '#E0E0E0', opacity: 0.7 }}>
-            Ferramentas para facilitar testes e desenvolvimento do sistema
-          </p>
-          <button
-            onClick={handleSeedData}
-            className="px-6 py-3 rounded-lg font-medium transition-colors hover:opacity-80"
-            style={{ backgroundColor: '#0A6777', color: 'white' }}
-          >
-            Gerar Dados de Teste
-          </button>
-          <p className="text-xs mt-2" style={{ color: '#E0E0E0', opacity: 0.6 }}>
-            Cria 3 cenários de teste: Dia Perfeito, Esquecimento e Atraso
-          </p>
         </div>
       </div>
     </div>
