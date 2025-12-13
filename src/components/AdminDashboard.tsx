@@ -99,16 +99,20 @@ export function AdminDashboard() {
       const today = new Date().toISOString().split('T')[0];
 
       const timeRecords = await api.timeRecords.getAll({ date: today });
+      const allUsers = await api.users.getAll();
 
-      // Extract unique employees
       const uniqueEmployees = new Map<number, Employee>();
+
       timeRecords.forEach((record: any) => {
-        if (record.user && record.check_in && !uniqueEmployees.has(record.user.id)) {
-          uniqueEmployees.set(record.user.id, {
-            id: record.user.id,
-            name: record.user.name,
-            email: record.user.email
-          });
+        if (record.type === 'entry' && !uniqueEmployees.has(record.user_id)) {
+          const user = allUsers.find((u: any) => u.id === record.user_id);
+          if (user) {
+            uniqueEmployees.set(record.user_id, {
+              id: user.id,
+              name: user.name,
+              email: user.email
+            });
+          }
         }
       });
 
@@ -161,8 +165,8 @@ export function AdminDashboard() {
 
   const formatFieldName = (type: string): string => {
     const fieldNames: { [key: string]: string } = {
-      check_in: 'Entrada',
-      check_out: 'Saída',
+      entry: 'Entrada',
+      exit: 'Saída',
       break_start: 'Início do Intervalo',
       break_end: 'Fim do Intervalo',
     };
@@ -172,6 +176,9 @@ export function AdminDashboard() {
   const formatTimeDisplay = (timestamp: string | null | undefined): string => {
     if (!timestamp) return 'N/A';
     try {
+      if (timestamp.includes(':')) {
+        return timestamp.substring(0, 5);
+      }
       const date = new Date(timestamp);
       if (isNaN(date.getTime())) {
         return 'N/A';
@@ -281,7 +288,7 @@ export function AdminDashboard() {
                   >
                     <div className="mb-3">
                       <p className="font-semibold mb-1" style={{ color: '#E0E0E0' }}>
-                        {request.user?.name || 'Funcionário Desconhecido'}
+                        {(request as any).user_name || request.user?.name || 'Funcionário Desconhecido'}
                       </p>
                       <p className="text-sm mb-1" style={{ color: '#E0E0E0', opacity: 0.8 }}>
                         Campo: <span className="font-medium">{formatFieldName(request.type)}</span>
