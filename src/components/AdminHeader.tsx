@@ -25,7 +25,7 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh, pendingCount }
             </div>
           </div>
 
-          <nav className="flex items-center space-x-1 overflow-x-auto flex-1 justify-end">
+          <nav className="flex items-center space-x-1 overflow-x-auto flex-1 justify-end py-1">
             <button
               onClick={() => onNavigate('dashboard')}
               style={{
@@ -62,13 +62,13 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh, pendingCount }
                 backgroundColor: currentPage === 'requests' ? '#0A6777' : 'transparent',
                 color: currentPage === 'requests' ? 'white' : '#E0E0E0'
               }}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 relative whitespace-nowrap mr-2"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 relative whitespace-nowrap"
             >
               Solicitações
               {typeof pendingCount === 'number' && pendingCount > 0 && (
                 <span
-                  className="absolute top-0 right-0 w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold"
-                  style={{ backgroundColor: '#EF4444', color: 'white', transform: 'translate(50%, -50%)' }}
+                  className="absolute w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold"
+                  style={{ backgroundColor: '#EF4444', color: 'white', top: '-4px', right: '-4px' }}
                 >
                   {pendingCount > 9 ? '9+' : pendingCount}
                 </span>
