@@ -14,7 +14,6 @@ interface Shift {
 }
 
 function calculateTotalMinutes(entry: string, lunchStart: string, lunchEnd: string, exit: string): number {
-  // Convert time strings to minutes
   const timeToMinutes = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
@@ -25,7 +24,6 @@ function calculateTotalMinutes(entry: string, lunchStart: string, lunchEnd: stri
   const lunchEndMinutes = timeToMinutes(lunchEnd);
   const exitMinutes = timeToMinutes(exit);
 
-  // Calculate total work time
   const morningWork = lunchStartMinutes - entryMinutes;
   const afternoonWork = exitMinutes - lunchEndMinutes;
 
@@ -56,7 +54,6 @@ export function ShiftManagement() {
   }, []);
 
   useEffect(() => {
-    // Calculate total minutes whenever form data changes
     if (formData.start_time && formData.break_start && formData.break_end && formData.end_time) {
       const total = calculateTotalMinutes(
         formData.start_time,
@@ -105,7 +102,6 @@ export function ShiftManagement() {
 
     try {
       if (editingId) {
-        // Update existing shift
         await api.shifts.update(editingId, {
           name: formData.name,
           start_time: formData.start_time,
@@ -116,7 +112,6 @@ export function ShiftManagement() {
         });
         alert('Turno atualizado com sucesso!');
       } else {
-        // Create new shift
         await api.shifts.create({
           name: formData.name,
           start_time: formData.start_time,

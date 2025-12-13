@@ -108,12 +108,6 @@ export function Login() {
               <span>{loading ? 'Entrando...' : 'Entrar'}</span>
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t" style={{ borderColor: '#0A67774D' }}>
-            <p className="text-xs text-center" style={{ color: '#E0E0E099' }}>
-              Admin: testeempresa@gmail.com / teste
-            </p>
-          </div>
         </div>
 
         <p className="text-center text-sm mt-6" style={{ color: '#E0E0E066' }}>

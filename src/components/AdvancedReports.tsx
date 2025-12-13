@@ -85,18 +85,15 @@ function getDateRange(period: PeriodType, customStart?: string, customEnd?: stri
       start = today;
       break;
     case 'week':
-      // Início da semana (segunda-feira)
       start = new Date(today);
       const dayOfWeek = start.getDay();
       const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Se domingo, volta 6 dias, senão volta para segunda
       start.setDate(start.getDate() + diff);
       break;
     case 'month':
-      // Primeiro dia do mês atual
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       break;
     case 'year':
-      // Primeiro dia do ano atual
       start = new Date(today.getFullYear(), 0, 1);
       break;
     case 'custom':
@@ -124,12 +121,10 @@ export function AdvancedReports() {
   const [reportData, setReportData] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Função para lidar com mudança de período
   function handlePeriodChange(newPeriod: PeriodType) {
     setPeriod(newPeriod);
 
     if (newPeriod !== 'custom') {
-      // Limpar as datas customizadas quando selecionar um filtro rápido
       setCustomStartDate('');
       setCustomEndDate('');
     }
@@ -165,26 +160,20 @@ export function AdvancedReports() {
     try {
       const dateRange = getDateRange(period, customStartDate, customEndDate);
 
-      // Buscar relatório via API
       const data = await api.timeRecords.getReport({
         user_id: selectedEmployeeId,
         start_date: dateRange.start,
         end_date: dateRange.end,
       });
 
-      // Buscar dados do funcionário para obter o turno
       const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
       const shift = selectedEmployee?.shift || null;
 
-      // Gerar calendário completo com todas as datas do período
       const allDates = generateDateRange(dateRange.start, dateRange.end);
 
-      // Processar dados do relatório - uma linha para cada data
       const rows: ReportRow[] = allDates.map((date) => {
-        // Buscar registro existente para esta data
         const existingRecord = (data || []).find((record: any) => record.date === date);
 
-        // Se não houver registro, criar um TimeRecord vazio
         const record: TimeRecord = existingRecord || {
           date: date,
           entry: null,
