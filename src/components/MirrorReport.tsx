@@ -1,0 +1,363 @@
+import { useState, useEffect } from 'react';
+import { Calendar, FileText, Printer, Clock } from 'lucide-react';
+import { api } from '../services/api';
+import { calculateWorkedMinutes } from '../utils/timeCalculations';
+
+type User = {
+  id: number;
+  name: string;
+  email: string;
+  cpf: string;
+};
+
+type TimeRecord = {
+  id: number;
+  user_id: number;
+  date: string;
+  time: string;
+  type: string;
+  edited_by_admin: number;
+};
+
+type DayRecord = {
+  date: string;
+  records: TimeRecord[];
+  totalWorked: number;
+  expectedMinutes: number;
+  balance: number;
+};
+
+export function MirrorReport() {
+  const [employees, setEmployees] = useState<User[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(0);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [dayRecords, setDayRecords] = useState<DayRecord[]>([]);
+  const [employeeInfo, setEmployeeInfo] = useState<any>(null);
+
+  useEffect(() => {
+    loadEmployees();
+    const today = new Date();
+    const monthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(monthStr);
+  }, []);
+
+  useEffect(() => {
+    if (selectedEmployeeId && selectedMonth) {
+      loadMonthData();
+    }
+  }, [selectedEmployeeId, selectedMonth]);
+
+  const loadEmployees = async () => {
+    try {
+      const data = await api.users.getAll();
+      setEmployees(data || []);
+      if (data && data.length > 0) {
+        setSelectedEmployeeId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar funcion�rios:', error);
+    }
+  };
+
+  const loadMonthData = async () => {
+    setLoading(true);
+    try {
+      const [year, month] = selectedMonth.split('-');
+      const startDate = `${year}-${month}-01`;
+      const lastDay = new Date(Number(year), Number(month), 0).getDate();
+      const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+
+      const records = await api.timeRecords.getAll({
+        user_id: selectedEmployeeId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+
+      const allUsers = await api.users.getAll();
+      const employee = allUsers.find((u: User) => u.id === selectedEmployeeId);
+      setEmployeeInfo(employee);
+
+      const groupedByDay: { [key: string]: TimeRecord[] } = {};
+      records.forEach((record: TimeRecord) => {
+        if (!groupedByDay[record.date]) {
+          groupedByDay[record.date] = [];
+        }
+        groupedByDay[record.date].push(record);
+      });
+
+      const days: DayRecord[] = [];
+      for (let day = 1; day <= lastDay; day++) {
+        const dateStr = `${year}-${month}-${String(day).padStart(2, '0')}`;
+        const dayRecords = groupedByDay[dateStr] || [];
+
+        dayRecords.sort((a, b) => a.time.localeCompare(b.time));
+
+        const entry = dayRecords.find(r => r.type === 'entry');
+        const exit = dayRecords.find(r => r.type === 'exit');
+        const breakStart = dayRecords.find(r => r.type === 'break_start');
+        const breakEnd = dayRecords.find(r => r.type === 'break_end');
+
+        let totalWorked = 0;
+        if (entry && exit) {
+          totalWorked = calculateWorkedMinutes(
+            entry.time,
+            breakStart?.time,
+            breakEnd?.time,
+            exit.time
+          );
+        }
+
+        const expectedMinutes = 480;
+        const balance = totalWorked - expectedMinutes;
+
+        days.push({
+          date: dateStr,
+          records: dayRecords,
+          totalWorked,
+          expectedMinutes,
+          balance,
+        });
+      }
+
+      setDayRecords(days);
+    } catch (error) {
+      console.error('Erro ao carregar dados do m�s:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatMinutes = (minutes: number): string => {
+    const hours = Math.floor(Math.abs(minutes) / 60);
+    const mins = Math.abs(minutes) % 60;
+    const sign = minutes < 0 ? '-' : '';
+    return `${sign}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  };
+
+  const getDayOfWeek = (dateStr: string): string => {
+    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S�b'];
+    const date = new Date(dateStr + 'T00:00:00');
+    return days[date.getDay()];
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const totalBalance = dayRecords.reduce((sum, day) => sum + day.balance, 0);
+  const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-area, .print-area * {
+              visibility: visible;
+            }
+            .print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .print-header {
+              margin-bottom: 20px;
+              padding-bottom: 10px;
+              border-bottom: 2px solid #000;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+            }
+            th, td {
+              border: 1px solid #000;
+              padding: 8px;
+              text-align: left;
+            }
+            th {
+              background-color: #f0f0f0 !important;
+            }
+          }
+        `}
+      </style>
+
+      <div className="no-print mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <FileText style={{ color: '#0A6777' }} className="w-8 h-8" />
+            <h2 style={{ color: '#E0E0E0' }} className="text-3xl font-bold">
+              Espelho de Ponto
+            </h2>
+          </div>
+          <button
+            onClick={handlePrint}
+            className="px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+            style={{ backgroundColor: '#0A6777', color: 'white' }}
+          >
+            <Printer className="w-5 h-5" />
+            <span>Imprimir Espelho</span>
+          </button>
+        </div>
+
+        <div className="rounded-lg shadow-xl p-6 mb-6" style={{ backgroundColor: '#253A4A' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
+                Funcion�rio
+              </label>
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(Number(e.target.value))}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
+              >
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name} - CPF: {employee.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
+                M�s/Ano
+              </label>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="print-area">
+        <div className="print-header mb-6">
+          <h1 className="text-2xl font-bold text-center" style={{ color: '#0A6777' }}>
+            ESPELHO DE PONTO
+          </h1>
+          {selectedEmployee && (
+            <div className="mt-4">
+              <p className="text-sm" style={{ color: '#E0E0E0' }}>
+                <strong>Funcion�rio:</strong> {selectedEmployee.name}
+              </p>
+              <p className="text-sm" style={{ color: '#E0E0E0' }}>
+                <strong>CPF:</strong> {selectedEmployee.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
+              </p>
+              <p className="text-sm" style={{ color: '#E0E0E0' }}>
+                <strong>Per�odo:</strong> {new Date(selectedMonth + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 no-print">
+            <div
+              className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"
+              style={{ borderColor: '#0A6777' }}
+            />
+            <p className="mt-4" style={{ color: '#E0E0E099' }}>
+              Carregando dados...
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="rounded-lg shadow-xl overflow-hidden" style={{ backgroundColor: '#253A4A' }}>
+              <table className="w-full">
+                <thead>
+                  <tr style={{ backgroundColor: '#0A1A2F' }}>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Data</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Dia</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Entrada</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Sa�da Pausa</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Volta Pausa</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Sa�da</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold" style={{ color: '#E0E0E0' }}>Total</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold" style={{ color: '#E0E0E0' }}>Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dayRecords.map((day, index) => {
+                    const entry = day.records.find(r => r.type === 'entry');
+                    const exit = day.records.find(r => r.type === 'exit');
+                    const breakStart = day.records.find(r => r.type === 'break_start');
+                    const breakEnd = day.records.find(r => r.type === 'break_end');
+                    const hasRecords = day.records.length > 0;
+
+                    return (
+                      <tr
+                        key={day.date}
+                        style={{
+                          backgroundColor: index % 2 === 0 ? '#0A1A2F' : '#253A4A',
+                          opacity: hasRecords ? 1 : 0.5,
+                        }}
+                      >
+                        <td className="px-4 py-2 text-sm" style={{ color: '#E0E0E0' }}>
+                          {new Date(day.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </td>
+                        <td className="px-4 py-2 text-sm" style={{ color: '#E0E0E0' }}>
+                          {getDayOfWeek(day.date)}
+                        </td>
+                        <td className="px-4 py-2 text-sm" style={{ color: '#E0E0E0' }}>
+                          {entry ? entry.time : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-sm" style={{ color: '#E0E0E0' }}>
+                          {breakStart ? breakStart.time : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-sm" style={{ color: '#E0E0E0' }}>
+                          {breakEnd ? breakEnd.time : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-sm" style={{ color: '#E0E0E0' }}>
+                          {exit ? exit.time : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-center font-semibold" style={{ color: '#E0E0E0' }}>
+                          {hasRecords ? formatMinutes(day.totalWorked) : '-'}
+                        </td>
+                        <td
+                          className="px-4 py-2 text-sm text-center font-semibold"
+                          style={{
+                            color: day.balance > 0 ? '#22C55E' : day.balance < 0 ? '#EF4444' : '#E0E0E0',
+                          }}
+                        >
+                          {hasRecords ? formatMinutes(day.balance) : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: '#0A6777' }}>
+                    <td colSpan={6} className="px-4 py-3 text-right text-sm font-bold" style={{ color: 'white' }}>
+                      SALDO TOTAL DO M�S:
+                    </td>
+                    <td colSpan={2} className="px-4 py-3 text-center text-lg font-bold" style={{ color: 'white' }}>
+                      {formatMinutes(totalBalance)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="mt-8 print-footer text-center text-xs" style={{ color: '#6B7280' }}>
+              <p>Este documento foi gerado automaticamente pelo sistema VivaPonto</p>
+              <p>Data de emiss�o: {new Date().toLocaleDateString('pt-BR')} �s {new Date().toLocaleTimeString('pt-BR')}</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

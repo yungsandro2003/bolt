@@ -100,7 +100,45 @@ async function setup() {
         )
       `, (err) => {
         if (err) console.error('Erro ao criar tabela adjustment_requests:', err);
-        else console.log('✅ Tabela adjustment_requests criada\n');
+        else console.log('✅ Tabela adjustment_requests criada');
+      });
+
+      db.run(`
+        CREATE TABLE IF NOT EXISTS user_shift_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          shift_id INTEGER NOT NULL,
+          start_date TEXT NOT NULL,
+          end_date TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          FOREIGN KEY (shift_id) REFERENCES shifts(id)
+        )
+      `, (err) => {
+        if (err) console.error('Erro ao criar tabela user_shift_history:', err);
+        else console.log('✅ Tabela user_shift_history criada\n');
+      });
+
+      console.log('🔍 Criando índices para otimização...\n');
+
+      db.run('CREATE INDEX IF NOT EXISTS idx_users_cpf ON users(cpf)', (err) => {
+        if (err) console.error('Erro ao criar índice users_cpf:', err);
+        else console.log('✅ Índice criado: users(cpf)');
+      });
+
+      db.run('CREATE INDEX IF NOT EXISTS idx_time_records_user_date ON time_records(user_id, date)', (err) => {
+        if (err) console.error('Erro ao criar índice time_records_user_date:', err);
+        else console.log('✅ Índice criado: time_records(user_id, date)');
+      });
+
+      db.run('CREATE INDEX IF NOT EXISTS idx_adjustment_requests_user_status ON adjustment_requests(user_id, status)', (err) => {
+        if (err) console.error('Erro ao criar índice adjustment_requests_user_status:', err);
+        else console.log('✅ Índice criado: adjustment_requests(user_id, status)');
+      });
+
+      db.run('CREATE INDEX IF NOT EXISTS idx_user_shift_history_user ON user_shift_history(user_id)', (err) => {
+        if (err) console.error('Erro ao criar índice user_shift_history_user:', err);
+        else console.log('✅ Índice criado: user_shift_history(user_id)\n');
       });
 
       console.log('📦 Inserindo dados padrão...\n');

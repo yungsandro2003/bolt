@@ -61,21 +61,39 @@ npm run server  # Inicia apenas o backend
 
 ## Estrutura do Banco de Dados
 
-O banco de dados é criado automaticamente ao iniciar o servidor.
+O banco de dados é criado automaticamente ao iniciar o servidor com índices otimizados para performance.
 
 ### Tabelas
 
 #### users
 - id, name, email, cpf, password, role (admin/employee), shift_id
+- **Índice:** cpf (otimiza buscas por CPF)
 
 #### shifts
 - id, name, start_time, break_start, break_end, end_time, total_minutes
 
 #### time_records
 - id, user_id, date, time, type (entry/break_start/break_end/exit)
+- edited_by_admin, admin_id, admin_justification, edited_at (auditoria)
+- **Índice:** (user_id, date) - otimiza consultas de registros por funcionário/data
 
 #### adjustment_requests
 - id, user_id, date, old_time, new_time, type, reason, status, reviewed_by, reviewed_at
+- **Índice:** (user_id, status) - otimiza filtros de solicitações
+
+#### user_shift_history
+- id, user_id, shift_id, start_date, end_date
+- **Índice:** user_id - rastreia mudanças de turno ao longo do tempo
+
+## Funcionalidades Globais
+
+### Botão de Refresh (NOVO)
+- Disponível em todas as telas (Admin e Funcionário)
+- Ícone circular no header ao lado do nome do usuário
+- Força atualização dos dados sem recarregar a página
+- Garante visualização de dados mais recentes
+
+---
 
 ## Funcionalidades
 
@@ -83,20 +101,24 @@ O banco de dados é criado automaticamente ao iniciar o servidor.
 
 1. **Dashboard** - Visão geral do sistema
    - Total de funcionários
-   - Solicitações pendentes
+   - Solicitações pendentes com badge de notificação
    - Funcionários presentes hoje
+   - Ferramentas de desenvolvimento (gerar dados de teste)
 
 2. **Gestão de Turnos**
    - Criar/editar turnos de trabalho
    - Definir 4 horários (Entrada, Saída Almoço, Retorno, Saída)
    - Cálculo automático de carga horária
+   - Histórico automático de mudanças de turno
 
 3. **Gestão de Funcionários**
    - Cadastrar funcionários (Nome, Email, CPF, Senha, Turno)
    - Listar todos os funcionários
+   - Editar funcionários (registra histórico de turno)
    - Excluir funcionários
 
 4. **Central de Solicitações**
+   - Badge vermelho com contador de pendências
    - Aprovar/Rejeitar ajustes de ponto
    - Filtrar por status (Pendente, Aprovado, Rejeitado)
 
@@ -104,6 +126,20 @@ O banco de dados é criado automaticamente ao iniciar o servidor.
    - Filtrar por funcionário e período
    - Visualizar horas trabalhadas vs horas previstas
    - Saldo de horas (extras em verde, negativas em vermelho)
+
+6. **Ajustes Manuais** (NOVO)
+   - Adicionar batida manual com justificativa obrigatória
+   - Editar batidas existentes com auditoria completa
+   - Excluir batidas com registro de justificativa
+   - Indicador visual de batidas editadas pelo admin
+   - Filtro por funcionário e data
+
+7. **Espelho de Ponto** (NOVO)
+   - Relatório mensal completo por funcionário
+   - Tabela com todas as batidas do mês
+   - Cálculo de saldo diário e total
+   - Botão de impressão (CSS otimizado para documento oficial)
+   - Filtro por funcionário e mês/ano
 
 ### Funcionário
 
@@ -161,6 +197,15 @@ O painel do funcionário possui **menu de navegação** (igual ao admin) com 3 s
 - `POST /api/adjustment-requests` - Criar solicitação
 - `PUT /api/adjustment-requests/:id/approve` - Aprovar (Admin)
 - `PUT /api/adjustment-requests/:id/reject` - Rejeitar (Admin)
+
+### Ajustes Manuais (Admin)
+- `GET /api/manual/records/:userId/:date` - Buscar batidas do dia
+- `POST /api/manual/add` - Adicionar batida manual
+- `PUT /api/manual/edit/:id` - Editar batida
+- `DELETE /api/manual/delete/:id` - Excluir batida
+
+### Debug (Desenvolvimento)
+- `POST /api/debug/seed-scenarios` - Gerar dados de teste
 
 ## Build para Produção
 

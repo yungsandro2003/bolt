@@ -86,6 +86,33 @@ router.put('/:id', authenticateToken, isAdmin, (req, res) => {
         return res.status(400).json({ error: 'Email já está em uso' });
       }
 
+      const oldShiftId = user.shift_id;
+      const newShiftId = shift_id || null;
+      const today = new Date().toISOString().split('T')[0];
+
+      if (oldShiftId !== newShiftId && newShiftId !== null) {
+        console.log('📝 Mudança de turno detectada. Registrando histórico...');
+
+        if (oldShiftId) {
+          db.run(
+            'UPDATE user_shift_history SET end_date = ? WHERE user_id = ? AND end_date IS NULL',
+            [today, id],
+            (err) => {
+              if (err) console.error('Erro ao fechar histórico de turno anterior:', err);
+            }
+          );
+        }
+
+        db.run(
+          'INSERT INTO user_shift_history (user_id, shift_id, start_date) VALUES (?, ?, ?)',
+          [id, newShiftId, today],
+          (err) => {
+            if (err) console.error('Erro ao registrar novo histórico de turno:', err);
+            else console.log(`✅ Histórico registrado: User ${id} -> Turno ${newShiftId} a partir de ${today}`);
+          }
+        );
+      }
+
       db.run(
         'UPDATE users SET name = ?, email = ?, shift_id = ? WHERE id = ? AND role = "employee"',
         [name, email, shift_id || null, id],

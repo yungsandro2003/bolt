@@ -162,4 +162,12 @@ export const api = {
         body: JSON.stringify({ justification }),
       }),
   },
+
+  debug: {
+    seedScenarios: (user_id: number) =>
+      request('/debug/seed-scenarios', {
+        method: 'POST',
+        body: JSON.stringify({ user_id }),
+      }),
+  },
 };

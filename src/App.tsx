@@ -9,11 +9,13 @@ import { EmployeeManagement } from './components/EmployeeManagement';
 import { RequestsCenter } from './components/RequestsCenter';
 import { AdvancedReports } from './components/AdvancedReports';
 import { ManualAdjustments } from './components/ManualAdjustments';
+import { MirrorReport } from './components/MirrorReport';
 import { ClockIn } from './components/ClockIn';
 import { Reports } from './components/Reports';
 import { EmployeeRequests } from './components/EmployeeRequests';
+import { api } from './services/api';
 
-type AdminPage = 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual';
+type AdminPage = 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual' | 'mirror';
 type EmployeePage = 'clock-in' | 'reports' | 'requests';
 
 function AppContent() {
@@ -21,10 +23,28 @@ function AppContent() {
   const [adminPage, setAdminPage] = useState<AdminPage>('dashboard');
   const [employeePage, setEmployeePage] = useState<EmployeePage>('clock-in');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
   };
+
+  const loadPendingCount = async () => {
+    if (user?.role === 'admin') {
+      try {
+        const data = await api.adjustmentRequests.getAll('pending');
+        setPendingCount(data?.length || 0);
+      } catch (error) {
+        console.error('Erro ao carregar contador de pendências:', error);
+      }
+    }
+  };
+
+  useState(() => {
+    loadPendingCount();
+    const interval = setInterval(loadPendingCount, 30000);
+    return () => clearInterval(interval);
+  });
 
   if (loading) {
     return (
@@ -44,7 +64,12 @@ function AppContent() {
   if (user.role === 'admin') {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#0A1A2F' }}>
-        <AdminHeader currentPage={adminPage} onNavigate={setAdminPage} onRefresh={handleRefresh} />
+        <AdminHeader
+          currentPage={adminPage}
+          onNavigate={setAdminPage}
+          onRefresh={handleRefresh}
+          pendingCount={pendingCount}
+        />
         <main>
           {adminPage === 'dashboard' && <AdminDashboard key={refreshKey} />}
           {adminPage === 'shifts' && <ShiftManagement key={refreshKey} />}
@@ -52,6 +77,7 @@ function AppContent() {
           {adminPage === 'requests' && <RequestsCenter adminUserId={user.id} key={refreshKey} />}
           {adminPage === 'reports' && <AdvancedReports key={refreshKey} />}
           {adminPage === 'manual' && <ManualAdjustments key={refreshKey} />}
+          {adminPage === 'mirror' && <MirrorReport key={refreshKey} />}
         </main>
       </div>
     );

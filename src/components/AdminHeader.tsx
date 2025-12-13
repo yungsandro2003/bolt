@@ -2,12 +2,13 @@ import { Clock, LogOut, User, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 type AdminHeaderProps = {
-  currentPage: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual';
-  onNavigate: (page: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual') => void;
+  currentPage: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual' | 'mirror';
+  onNavigate: (page: 'dashboard' | 'shifts' | 'employees' | 'requests' | 'reports' | 'manual' | 'mirror') => void;
   onRefresh?: () => void;
+  pendingCount?: number;
 };
 
-export function AdminHeader({ currentPage, onNavigate, onRefresh }: AdminHeaderProps) {
+export function AdminHeader({ currentPage, onNavigate, onRefresh, pendingCount }: AdminHeaderProps) {
   const { user, logout } = useAuth();
 
   return (
@@ -61,9 +62,17 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh }: AdminHeaderP
                 backgroundColor: currentPage === 'requests' ? '#0A6777' : 'transparent',
                 color: currentPage === 'requests' ? 'white' : '#E0E0E0'
               }}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 relative"
             >
               Solicitações
+              {pendingCount && pendingCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold"
+                  style={{ backgroundColor: '#EF4444', color: 'white' }}
+                >
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => onNavigate('reports')}
@@ -84,6 +93,16 @@ export function AdminHeader({ currentPage, onNavigate, onRefresh }: AdminHeaderP
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
             >
               Ajustes Manuais
+            </button>
+            <button
+              onClick={() => onNavigate('mirror')}
+              style={{
+                backgroundColor: currentPage === 'mirror' ? '#0A6777' : 'transparent',
+                color: currentPage === 'mirror' ? 'white' : '#E0E0E0'
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
+            >
+              Espelho Ponto
             </button>
 
             <div className="ml-4 pl-4 border-l flex items-center space-x-2" style={{ borderColor: '#0A67774D' }}>

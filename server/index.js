@@ -9,6 +9,7 @@ const shiftRoutes = require('./routes/shifts');
 const timeRecordRoutes = require('./routes/timeRecords');
 const adjustmentRequestRoutes = require('./routes/adjustmentRequests');
 const manualAdjustmentsRoutes = require('./routes/manualAdjustments');
+const debugRoutes = require('./routes/debug');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,7 @@ async function startServer() {
   app.use('/api/time-records', timeRecordRoutes);
   app.use('/api/adjustment-requests', adjustmentRequestRoutes);
   app.use('/api/manual', manualAdjustmentsRoutes);
+  app.use('/api/debug', debugRoutes);
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'VivaPonto API rodando' });
