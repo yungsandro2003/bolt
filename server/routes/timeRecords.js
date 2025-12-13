@@ -91,8 +91,11 @@ router.get('/today', authenticateToken, (req, res) => {
 router.post('/', authenticateToken, (req, res) => {
   const { type } = req.body;
   const user_id = req.user.id;
-  const date = new Date().toISOString().split('T')[0];
-  const time = new Date().toISOString().split('T')[1].substring(0, 5);
+  const now = new Date();
+  const date = now.toISOString().split('T')[0];
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const time = `${hours}:${minutes}`;
 
   console.log('\n🔵 [POST /time-records] INÍCIO DO REGISTRO');
   console.log('📥 Dados recebidos:', { type, user_id, date, time });
