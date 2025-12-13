@@ -226,7 +226,7 @@ router.get('/report', authenticateToken, (req, res) => {
       console.error('Erro na query de relatório:', err);
       return res.status(500).json({ error: 'Erro ao gerar relatório' });
     }
-    res.json(rows);
+    res.json(rows || []);
   });
 });
 

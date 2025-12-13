@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, FileText, Printer, Clock } from 'lucide-react';
 import { api } from '../services/api';
 import { calculateWorkedMinutes } from '../utils/timeCalculations';
+import { generateDateRange } from '../utils/dateUtils';
 
 type User = {
   id: number;
@@ -27,26 +28,27 @@ type DayRecord = {
   balance: number;
 };
 
+type PeriodType = 'today' | 'week' | 'month' | 'year' | 'custom';
+
 export function MirrorReport() {
   const [employees, setEmployees] = useState<User[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(0);
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [period, setPeriod] = useState<PeriodType>('month');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [dayRecords, setDayRecords] = useState<DayRecord[]>([]);
   const [employeeInfo, setEmployeeInfo] = useState<any>(null);
 
   useEffect(() => {
     loadEmployees();
-    const today = new Date();
-    const monthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    setSelectedMonth(monthStr);
   }, []);
 
   useEffect(() => {
-    if (selectedEmployeeId && selectedMonth) {
-      loadMonthData();
+    if (selectedEmployeeId) {
+      loadData();
     }
-  }, [selectedEmployeeId, selectedMonth]);
+  }, [selectedEmployeeId, period, customStartDate, customEndDate]);
 
   const loadEmployees = async () => {
     try {
@@ -56,22 +58,72 @@ export function MirrorReport() {
         setSelectedEmployeeId(data[0].id);
       }
     } catch (error) {
-      console.error('Erro ao carregar funcion�rios:', error);
+      console.error('Erro ao carregar funcionários:', error);
     }
   };
 
-  const loadMonthData = async () => {
+  const getDateRange = () => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (period) {
+      case 'today':
+        start = today;
+        end = today;
+        break;
+
+      case 'week':
+        start = new Date(today);
+        start.setDate(today.getDate() - today.getDay() + 1);
+        end = today;
+        break;
+
+      case 'month':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = today;
+        break;
+
+      case 'year':
+        start = new Date(today.getFullYear(), 0, 1);
+        end = today;
+        break;
+
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return { start: customStartDate, end: customEndDate };
+        }
+        start = today;
+        end = today;
+        break;
+
+      default:
+        start = today;
+        end = today;
+    }
+
+    const formatDateString = (date: Date) => {
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      start: formatDateString(start),
+      end: formatDateString(end)
+    };
+  };
+
+  const loadData = async () => {
     setLoading(true);
     try {
-      const [year, month] = selectedMonth.split('-');
-      const startDate = `${year}-${month}-01`;
-      const lastDay = new Date(Number(year), Number(month), 0).getDate();
-      const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+      const { start, end } = getDateRange();
 
       const records = await api.timeRecords.getAll({
         user_id: selectedEmployeeId,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: start,
+        end_date: end,
       });
 
       const allUsers = await api.users.getAll();
@@ -86,11 +138,9 @@ export function MirrorReport() {
         groupedByDay[record.date].push(record);
       });
 
-      const days: DayRecord[] = [];
-      for (let day = 1; day <= lastDay; day++) {
-        const dateStr = `${year}-${month}-${String(day).padStart(2, '0')}`;
+      const allDates = generateDateRange(start, end);
+      const days: DayRecord[] = allDates.map((dateStr) => {
         const dayRecords = groupedByDay[dateStr] || [];
-
         dayRecords.sort((a, b) => a.time.localeCompare(b.time));
 
         const entry = dayRecords.find(r => r.type === 'entry');
@@ -111,18 +161,18 @@ export function MirrorReport() {
         const expectedMinutes = 480;
         const balance = totalWorked - expectedMinutes;
 
-        days.push({
+        return {
           date: dateStr,
           records: dayRecords,
           totalWorked,
           expectedMinutes,
           balance,
-        });
-      }
+        };
+      });
 
       setDayRecords(days);
     } catch (error) {
-      console.error('Erro ao carregar dados do m�s:', error);
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -136,9 +186,30 @@ export function MirrorReport() {
   };
 
   const getDayOfWeek = (dateStr: string): string => {
-    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S�b'];
+    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const date = new Date(dateStr + 'T00:00:00');
     return days[date.getDay()];
+  };
+
+  const getPeriodLabel = (): string => {
+    const { start, end } = getDateRange();
+    const formatDisplay = (dateStr: string) => {
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString('pt-BR');
+    };
+
+    if (period === 'custom') {
+      return `${formatDisplay(start)} - ${formatDisplay(end)}`;
+    }
+
+    const labels = {
+      today: 'Hoje',
+      week: 'Esta Semana',
+      month: 'Este Mês',
+      year: 'Este Ano'
+    };
+
+    return labels[period] || '';
   };
 
   const handlePrint = () => {
@@ -269,7 +340,7 @@ export function MirrorReport() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
-                Funcion�rio
+                Funcionário
               </label>
               <select
                 value={selectedEmployeeId}
@@ -287,16 +358,59 @@ export function MirrorReport() {
 
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: '#E0E0E0' }}>
-                M�s/Ano
+                Período
               </label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
-                style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
-              />
+              <div className="flex items-center space-x-2">
+                <Calendar style={{ color: '#E0E0E0' }} className="w-5 h-5" />
+                <select
+                  value={period}
+                  onChange={(e) => {
+                    setPeriod(e.target.value as PeriodType);
+                    if (e.target.value !== 'custom') {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }
+                  }}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                  style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
+                >
+                  <option value="today">Hoje</option>
+                  <option value="week">Esta Semana</option>
+                  <option value="month">Este Mês</option>
+                  <option value="year">Este Ano</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
             </div>
+
+            {period === 'custom' && (
+              <div className="md:col-span-2 flex items-center space-x-4">
+                <div className="flex items-center space-x-2 flex-1">
+                  <label style={{ color: '#E0E0E0' }} className="text-sm">
+                    De:
+                  </label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                    style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
+                  />
+                </div>
+                <div className="flex items-center space-x-2 flex-1">
+                  <label style={{ color: '#E0E0E0' }} className="text-sm">
+                    Até:
+                  </label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                    style={{ backgroundColor: '#0A1A2F', borderColor: '#0A67774D', color: '#E0E0E0' }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -309,13 +423,13 @@ export function MirrorReport() {
           {selectedEmployee && (
             <div className="mt-4">
               <p className="text-sm" style={{ color: '#E0E0E0' }}>
-                <strong>Funcion�rio:</strong> {selectedEmployee.name}
+                <strong>Funcionário:</strong> {selectedEmployee.name}
               </p>
               <p className="text-sm" style={{ color: '#E0E0E0' }}>
                 <strong>CPF:</strong> {selectedEmployee.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
               </p>
               <p className="text-sm" style={{ color: '#E0E0E0' }}>
-                <strong>Per�odo:</strong> {new Date(selectedMonth + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                <strong>Período:</strong> {getPeriodLabel()}
               </p>
             </div>
           )}
@@ -340,9 +454,9 @@ export function MirrorReport() {
                     <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Data</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Dia</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Entrada</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Sa�da Pausa</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Saída Pausa</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Volta Pausa</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Sa�da</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold" style={{ color: '#E0E0E0' }}>Saída</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold" style={{ color: '#E0E0E0' }}>Total</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold" style={{ color: '#E0E0E0' }}>Saldo</th>
                   </tr>
@@ -399,7 +513,7 @@ export function MirrorReport() {
                 <tfoot>
                   <tr style={{ backgroundColor: '#0A6777' }}>
                     <td colSpan={6} className="px-4 py-3 text-right text-sm font-bold" style={{ color: 'white' }}>
-                      SALDO TOTAL DO M�S:
+                      SALDO TOTAL DO PERÍODO:
                     </td>
                     <td colSpan={2} className="px-4 py-3 text-center text-lg font-bold" style={{ color: 'white' }}>
                       {formatMinutes(totalBalance)}
@@ -411,7 +525,7 @@ export function MirrorReport() {
 
             <div className="mt-8 print-footer text-center text-xs" style={{ color: '#6B7280' }}>
               <p>Este documento foi gerado automaticamente pelo sistema VivaPonto</p>
-              <p>Data de emiss�o: {new Date().toLocaleDateString('pt-BR')} �s {new Date().toLocaleTimeString('pt-BR')}</p>
+              <p>Data de emissão: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
             </div>
           </>
         )}
